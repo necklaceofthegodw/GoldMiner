@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
 import { createSoundEngine, playSoundBatch } from "./audio/sfx";
 import {
   GAME_HEIGHT,
@@ -36,6 +36,12 @@ function App() {
   const [snapshot, setSnapshot] = useState(() => getSnapshot(engine));
   const [hasEnteredGame, setHasEnteredGame] = useState(false);
   const [showLevelSummary, setShowLevelSummary] = useState(false);
+  const [isPortraitMobile, setIsPortraitMobile] = useState(false);
+
+  const requestLandscapeLock = useCallback(() => {
+    if (!window.screen?.orientation?.lock) return;
+    window.screen.orientation.lock("landscape").catch(() => {});
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -117,18 +123,36 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 980px) and (orientation: portrait)");
+    const syncOrientation = () => {
+      setIsPortraitMobile(query.matches);
+    };
+
+    syncOrientation();
+    requestLandscapeLock();
+
+    query.addEventListener("change", syncOrientation);
+    window.addEventListener("orientationchange", syncOrientation);
+    return () => {
+      query.removeEventListener("change", syncOrientation);
+      window.removeEventListener("orientationchange", syncOrientation);
+    };
+  }, [requestLandscapeLock]);
+
   const refreshSnapshot = useCallback((persist = false) => {
     setSnapshot(getSnapshot(engine));
     if (persist) saveGameSave(getSaveData(engine));
   }, [engine]);
 
   const startNewRun = useCallback(() => {
+    requestLandscapeLock();
     resetProgress(engine);
     startLevel(engine, 1);
     setHasEnteredGame(true);
     setShowLevelSummary(false);
     refreshSnapshot(true);
-  }, [engine, refreshSnapshot]);
+  }, [engine, refreshSnapshot, requestLandscapeLock]);
 
   const handleCanvasTap = useCallback(() => {
     if (!hasEnteredGame) return;
@@ -190,7 +214,7 @@ function App() {
   const binaryTotal = snapshot.oneDecisions + snapshot.zeroDecisions;
 
   return (
-    <div className="scene-root">
+    <div className={`scene-root${isPortraitMobile ? " scene-root--portrait" : ""}`}>
       <canvas
         ref={canvasRef}
         width={GAME_WIDTH}
@@ -208,21 +232,21 @@ function App() {
             </button>
             <div className="miner-portrait" aria-hidden="true" />
           </div>
-          <div className="start-right">
-            <h1 id="start-title">Binary Miner</h1>
-            <p>Zlap jak najwiecej wartosci zanim minie czas.</p>
+                    <div className="start-right">
+            <h1 id="start-title">Gold Miner</h1>
+            <p>Zlap jak najwiecej surowcow zanim minie czas.</p>
             <div className="control-grid">
               <article>
-                <h2>Drop Hook</h2>
-                <p>Spacja albo klik w plansze.</p>
+                <h2>Hook</h2>
+                <p>Spacja lub klikniecie.</p>
               </article>
               <article>
                 <h2>Sklep</h2>
-                <p>Po wygranym poziomie kupujesz ulepszenia.</p>
+                <p>Kupuj ulepszenia, aby szybciej zdobywac surowce.</p>
               </article>
               <article>
                 <h2>Cel</h2>
-                <p>Spelnij limit kasy, aby przejsc dalej.</p>
+                <p>Zdobadz wystarczajaca ilosc kasy, aby przejsc dalej.</p>
               </article>
             </div>
             <button type="button" className="action-btn action-btn--gold" onClick={startNewRun}>
@@ -350,8 +374,16 @@ function App() {
           </button>
         </section>
       ) : null}
+
+      <section className="rotate-lock" aria-hidden={!isPortraitMobile}>
+        <div className="rotate-lock__card">
+          <h2>Obroc telefon</h2>
+          <p>Ta gra dziala w poziomie. Przekrec urzadzenie poziomo, aby wszystko bylo widoczne.</p>
+        </div>
+      </section>
     </div>
   );
 }
 
 export default App;
+
