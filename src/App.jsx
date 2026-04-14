@@ -43,6 +43,18 @@ function App() {
     window.screen.orientation.lock("landscape").catch(() => {});
   }, []);
 
+  const requestFullscreen = useCallback(() => {
+    const root = document.documentElement;
+    const request =
+      root.requestFullscreen ||
+      root.webkitRequestFullscreen ||
+      root.mozRequestFullScreen ||
+      root.msRequestFullscreen;
+
+    if (!request) return;
+    request.call(root).catch?.(() => {});
+  }, []);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
@@ -146,13 +158,14 @@ function App() {
   }, [engine]);
 
   const startNewRun = useCallback(() => {
+    requestFullscreen();
     requestLandscapeLock();
     resetProgress(engine);
     startLevel(engine, 1);
     setHasEnteredGame(true);
     setShowLevelSummary(false);
     refreshSnapshot(true);
-  }, [engine, refreshSnapshot, requestLandscapeLock]);
+  }, [engine, refreshSnapshot, requestFullscreen, requestLandscapeLock]);
 
   const handleCanvasTap = useCallback(() => {
     if (!hasEnteredGame) return;
