@@ -1,0 +1,454 @@
+:root {
+  --gold-1: #ffd978;
+  --gold-2: #c58a12;
+  --brown-1: #6e4122;
+  --brown-2: #3d2412;
+  --ink: #111827;
+  --paper: #f8f6ef;
+  --danger: #a12727;
+  --success: #119b2a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: #f8fafc;
+  font-family: "Trebuchet MS", "Lucida Sans Unicode", "Segoe UI Variable Text", sans-serif;
+  background:
+    radial-gradient(circle at 20% 14%, rgba(255, 219, 118, 0.2), transparent 30%),
+    radial-gradient(circle at 78% 88%, rgba(182, 118, 46, 0.2), transparent 33%),
+    linear-gradient(180deg, #14110c, #080808);
+}
+
+.scene-root {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  overflow: hidden;
+}
+
+.scene-root > * {
+  grid-area: 1 / 1;
+  align-self: center;
+  justify-self: center;
+}
+
+.game-canvas {
+  width: min(1120px, calc(100vw - 2rem));
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 22px;
+  border: 2px solid rgba(255, 219, 124, 0.32);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+
+.game-canvas--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.scene-panel {
+  width: min(1080px, calc(100vw - 2rem));
+  border-radius: 24px;
+  border: 2px solid rgba(255, 213, 102, 0.38);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.54);
+}
+
+.start-screen {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 22% 22%, rgba(255, 214, 94, 0.2), transparent 34%),
+    radial-gradient(circle at 86% 74%, rgba(152, 93, 32, 0.22), transparent 34%),
+    linear-gradient(145deg, #131923, #0b0f17);
+}
+
+.start-left {
+  min-height: 520px;
+  padding: 1.4rem;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(180deg, rgba(8, 12, 20, 0.92), rgba(16, 22, 32, 0.86)),
+    #0d1420;
+}
+
+.nugget-start {
+  width: 220px;
+  height: 180px;
+  border-radius: 57% 43% 49% 51% / 55% 37% 63% 45%;
+  border: 3px solid #8a6409;
+  background:
+    radial-gradient(circle at 30% 24%, #fff3b6 5%, #f8dd6f 22%, transparent 42%),
+    linear-gradient(155deg, #f5cd48, #b57807);
+  color: #4d3500;
+  font-size: 2.45rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  box-shadow:
+    0 0 56px rgba(255, 216, 104, 0.4),
+    inset 0 -12px 26px rgba(117, 71, 0, 0.32);
+}
+
+.nugget-start:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+
+.miner-portrait {
+  width: 250px;
+  height: 250px;
+  border-radius: 50%;
+  position: relative;
+  border: 4px solid rgba(34, 39, 48, 0.85);
+  background:
+    radial-gradient(circle at 38% 18%, #d8dde6 0, #a0a7b3 40%, #656d79 76%, #444b56 100%);
+}
+
+.miner-portrait::before {
+  content: "";
+  position: absolute;
+  width: 116px;
+  height: 140px;
+  left: 70px;
+  top: 46px;
+  border-radius: 46% 54% 52% 48% / 49% 46% 54% 51%;
+  background: linear-gradient(170deg, #ffd4aa, #e9a86d);
+  box-shadow: inset -10px -12px 0 rgba(186, 111, 51, 0.26);
+}
+
+.miner-portrait::after {
+  content: "";
+  position: absolute;
+  width: 150px;
+  height: 124px;
+  left: 50px;
+  bottom: 30px;
+  border-radius: 46% 54% 57% 43% / 39% 45% 55% 61%;
+  border: 2px solid rgba(63, 69, 78, 0.65);
+  background: linear-gradient(180deg, #d4d8de, #8e949d);
+}
+
+.start-right {
+  padding: 2rem 1.9rem;
+  display: grid;
+  align-content: center;
+  gap: 1rem;
+}
+
+.start-right h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4.3vw, 3.6rem);
+  color: var(--gold-1);
+  text-shadow: 0 3px 0 #6f4b07;
+}
+
+.start-right p {
+  margin: 0;
+  color: rgba(244, 248, 252, 0.92);
+  line-height: 1.5;
+}
+
+.control-grid {
+  display: grid;
+  gap: 0.66rem;
+}
+
+.control-grid article {
+  border: 1px solid rgba(255, 218, 122, 0.34);
+  border-radius: 14px;
+  padding: 0.75rem;
+  background: linear-gradient(145deg, rgba(140, 92, 16, 0.34), rgba(57, 36, 11, 0.3));
+}
+
+.control-grid h2 {
+  margin: 0;
+  font-size: 1.04rem;
+  color: #ffe3a7;
+}
+
+.control-grid p {
+  margin: 0.3rem 0 0;
+  font-size: 0.92rem;
+  color: rgba(247, 251, 255, 0.88);
+}
+
+.action-btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 0.78rem 1rem;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+}
+
+.action-btn:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+
+.action-btn--gold {
+  background: linear-gradient(145deg, #edc140, #ab7407);
+  color: #2f2201;
+  box-shadow: 0 10px 25px rgba(116, 73, 3, 0.36);
+}
+
+.action-btn--green {
+  width: auto;
+  background: linear-gradient(145deg, #0fad2f, #06701b);
+  border: 2px solid rgba(71, 255, 107, 0.38);
+}
+
+.action-btn--buy {
+  width: 100%;
+  margin-top: 0.45rem;
+  background: linear-gradient(145deg, #189f34, #0d6e22);
+}
+
+.summary-screen,
+.fail-screen,
+.complete-screen {
+  background:
+    radial-gradient(circle at 15% 15%, rgba(255, 211, 93, 0.2), transparent 35%),
+    linear-gradient(145deg, #18202d, #0d121c);
+  padding: 1.6rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.summary-screen h2,
+.fail-screen h2,
+.complete-screen h2 {
+  margin: 0;
+  color: var(--gold-1);
+  font-size: clamp(1.7rem, 3.1vw, 2.4rem);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.summary-grid div {
+  border-radius: 12px;
+  padding: 0.72rem;
+  border: 1px solid rgba(255, 222, 139, 0.26);
+  background: rgba(18, 28, 42, 0.64);
+  display: grid;
+  gap: 0.2rem;
+}
+
+.summary-grid span {
+  color: rgba(212, 224, 236, 0.88);
+  font-size: 0.84rem;
+}
+
+.summary-grid strong {
+  color: #ffffff;
+  font-size: 1.08rem;
+}
+
+.scene-note {
+  margin: 0;
+  color: rgba(232, 240, 248, 0.9);
+}
+
+.shop-screen {
+  padding: 1.25rem;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      #7d4b2b 0 62px,
+      #724327 62px 64px,
+      #895333 64px 126px,
+      #7a482a 126px 128px
+    ),
+    #7f4f30;
+}
+
+.shop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.shop-header h2 {
+  margin: 0;
+  color: var(--gold-1);
+  font-size: clamp(1.8rem, 4vw, 3.4rem);
+  text-shadow: 0 3px 0 #6b4304, 0 0 18px rgba(255, 218, 120, 0.3);
+}
+
+.speech {
+  margin: 1rem 0 0;
+  border-radius: 14px;
+  padding: 1rem;
+  color: #101316;
+  font-size: clamp(1rem, 2.3vw, 1.35rem);
+  font-weight: 700;
+  line-height: 1.38;
+  background: #f5f5f5;
+  border: 4px solid #101010;
+}
+
+.wallet {
+  margin: 1rem 0 0.4rem;
+  color: #fff4d1;
+  font-weight: 700;
+  font-size: 1.08rem;
+}
+
+.shop-list {
+  margin-top: 0.5rem;
+  display: grid;
+  gap: 0.7rem;
+  max-height: 54vh;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.shop-item-card {
+  border-radius: 13px;
+  border: 1px solid rgba(255, 226, 151, 0.34);
+  background: rgba(34, 19, 7, 0.8);
+  padding: 0.72rem;
+}
+
+.shop-item-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.shop-item-top h3 {
+  margin: 0;
+  color: #ffdfa4;
+  font-size: 1rem;
+}
+
+.shop-item-top span {
+  color: #d7e2f0;
+  font-size: 0.83rem;
+}
+
+.shop-item-card p {
+  margin: 0.38rem 0 0;
+  color: rgba(247, 250, 252, 0.9);
+  font-size: 0.88rem;
+}
+
+.fail-screen {
+  border-color: rgba(255, 127, 127, 0.36);
+  background:
+    radial-gradient(circle at 85% 15%, rgba(255, 84, 84, 0.18), transparent 35%),
+    linear-gradient(145deg, #2a1518, #110a0c);
+}
+
+.fail-screen p,
+.complete-screen p {
+  margin: 0;
+  color: rgba(238, 244, 250, 0.9);
+}
+
+.complete-screen {
+  border-color: rgba(146, 236, 133, 0.35);
+  background:
+    radial-gradient(circle at 85% 15%, rgba(88, 206, 84, 0.2), transparent 35%),
+    linear-gradient(145deg, #152818, #0b120c);
+}
+
+@media (max-width: 980px) {
+  .start-screen {
+    grid-template-columns: 1fr;
+  }
+
+  .start-left {
+    min-height: 0;
+    padding: 1.1rem 1rem 0.8rem;
+    gap: 0.8rem;
+  }
+
+  .miner-portrait {
+    width: 210px;
+    height: 210px;
+  }
+
+  .miner-portrait::before {
+    width: 96px;
+    height: 116px;
+    left: 56px;
+    top: 42px;
+  }
+
+  .miner-portrait::after {
+    width: 126px;
+    height: 102px;
+    left: 40px;
+    bottom: 24px;
+  }
+
+  .start-right {
+    padding: 1rem;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .scene-root {
+    padding: 0.6rem;
+  }
+
+  .scene-panel,
+  .game-canvas {
+    width: calc(100vw - 1.2rem);
+    border-radius: 16px;
+  }
+
+  .nugget-start {
+    width: 182px;
+    height: 150px;
+    font-size: 2rem;
+  }
+
+  .shop-screen {
+    padding: 0.9rem;
+  }
+
+  .speech {
+    padding: 0.78rem;
+    border-width: 3px;
+    font-size: 1rem;
+  }
+}
