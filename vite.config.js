@@ -80,14 +80,46 @@ function createDecisionLogMiddleware(rootPath) {
   };
 }
 
+function createDecisionLogCsvReadMiddleware(rootPath) {
+  const logPath = path.join(rootPath, CSV_LOG_DIRECTORY, CSV_LOG_FILENAME);
+
+  return async (req, res) => {
+    if (req.method !== "GET") {
+      res.statusCode = 405;
+      res.setHeader("Allow", "GET");
+      res.end();
+      return;
+    }
+
+    try {
+      let csvText;
+      try {
+        csvText = await fs.readFile(logPath, "utf8");
+      } catch {
+        csvText = CSV_HEADER;
+      }
+
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      res.end(csvText);
+    } catch {
+      res.statusCode = 500;
+      res.end("Failed to read decision CSV.");
+    }
+  };
+}
+
 function decisionCsvPlugin() {
   return {
     name: "decision-csv-plugin",
     configureServer(server) {
       server.middlewares.use("/api/decision-log", createDecisionLogMiddleware(server.config.root));
+      server.middlewares.use("/api/decision-log-csv", createDecisionLogCsvReadMiddleware(server.config.root));
     },
     configurePreviewServer(server) {
       server.middlewares.use("/api/decision-log", createDecisionLogMiddleware(server.config.root));
+      server.middlewares.use("/api/decision-log-csv", createDecisionLogCsvReadMiddleware(server.config.root));
     },
   };
 }

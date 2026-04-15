@@ -47,10 +47,15 @@ npm run preview
 
 ## Decision CSV Log
 
-- Decision events are appended to `logs/decisions.csv` in this project.
+- Local (`npm run dev` / `npm run preview`): events are appended to `logs/decisions.csv` in this project.
 - CSV format: `czas_zdarzenia_s,decyzja` (seconds with one decimal, e.g. `10.7`)
 - At the beginning of each new game, nick is logged first as: `nick,<player_nick>`.
-- Logging works while running through Vite server (`npm run dev` or `npm run preview`).
+
+### Vercel (phone app) log access
+
+1. In Vercel project settings, add environment variable `BLOB_READ_WRITE_TOKEN`.
+2. Deploy the project.
+3. Open `https://<your-domain>/api/decision-log-csv` to read the full CSV in one place.
 
 ## PWA Notes
 
