@@ -5,6 +5,7 @@ import {
   GAME_WIDTH,
   applySaveData,
   consumeAudioEvents,
+  consumeDecisionEvents,
   createEngine,
   drawEngine,
   getSaveData,
@@ -16,6 +17,7 @@ import {
   startLevel,
   updateEngine,
 } from "./game/engine";
+import { appendDecisionEntries, startDecisionSession } from "./game/decisionLogClient";
 import { loadGameSave, saveGameSave } from "./game/storage";
 
 function formatMoney(value) {
@@ -25,6 +27,7 @@ function formatMoney(value) {
 function App() {
   const canvasRef = useRef(null);
   const summaryTimerRef = useRef(0);
+  const nickInputRef = useRef(null);
 
   const [engine] = useState(() => {
     const created = createEngine();
@@ -37,6 +40,7 @@ function App() {
   const [hasEnteredGame, setHasEnteredGame] = useState(false);
   const [showLevelSummary, setShowLevelSummary] = useState(false);
   const [isPortraitMobile, setIsPortraitMobile] = useState(false);
+  const [playerNick, setPlayerNick] = useState("");
 
   const requestLandscapeLock = useCallback(() => {
     if (!window.screen?.orientation?.lock) return;
@@ -75,6 +79,11 @@ function App() {
       const soundEvents = consumeAudioEvents(engine);
       if (soundEvents.length > 0) {
         playSoundBatch(audio, soundEvents);
+      }
+
+      const decisionEvents = consumeDecisionEvents(engine);
+      if (decisionEvents.length > 0) {
+        appendDecisionEntries(decisionEvents);
       }
 
       if (engine.phase !== previousPhase) {
@@ -158,14 +167,21 @@ function App() {
   }, [engine]);
 
   const startNewRun = useCallback(() => {
+    const trimmedNick = playerNick.trim();
+    if (!trimmedNick) {
+      nickInputRef.current?.focus();
+      return;
+    }
+
     requestFullscreen();
     requestLandscapeLock();
+    startDecisionSession(trimmedNick);
     resetProgress(engine);
     startLevel(engine, 1);
     setHasEnteredGame(true);
     setShowLevelSummary(false);
     refreshSnapshot(true);
-  }, [engine, refreshSnapshot, requestFullscreen, requestLandscapeLock]);
+  }, [engine, playerNick, refreshSnapshot, requestFullscreen, requestLandscapeLock]);
 
   const handleCanvasTap = useCallback(() => {
     if (!hasEnteredGame) return;
@@ -225,6 +241,7 @@ function App() {
   const isFailed = hasEnteredGame && snapshot.phase === "level-failed";
   const isComplete = hasEnteredGame && snapshot.phase === "run-complete";
   const binaryTotal = snapshot.oneDecisions + snapshot.zeroDecisions;
+  const canStartGame = playerNick.trim().length > 0;
 
   return (
     <div className={`scene-root${isPortraitMobile ? " scene-root--portrait" : ""}`}>
@@ -234,24 +251,36 @@ function App() {
         height={GAME_HEIGHT}
         onPointerDown={handleCanvasTap}
         className={`game-canvas${isPlaying ? " game-canvas--visible" : ""}`}
-        aria-label="Binary Miner gameplay canvas"
+        aria-label="Gold Miner gameplay canvas"
       />
 
       {!hasEnteredGame ? (
         <section className="scene-panel start-screen" role="dialog" aria-modal="true" aria-labelledby="start-title">
           <div className="start-left">
-            <button type="button" className="nugget-start" onClick={startNewRun}>
+            <button type="button" className="nugget-start" onClick={startNewRun} disabled={!canStartGame}>
               Start
             </button>
             <div className="miner-portrait" aria-hidden="true" />
           </div>
                     <div className="start-right">
-            <h1 id="start-title">Binary Miner</h1>
+            <h1 id="start-title">Gold Miner</h1>
+            <label htmlFor="player-nick" className="nick-label">Nick</label>
+            <input
+              ref={nickInputRef}
+              id="player-nick"
+              type="text"
+              className="nick-input"
+              value={playerNick}
+              onChange={(event) => setPlayerNick(event.target.value)}
+              maxLength={32}
+              placeholder="Wpisz nick"
+              autoComplete="nickname"
+            />
             <p>Grab as many resources as you can before time runs out.</p>
             <div className="control-grid">
               <article>
                 <h2>Hook</h2>
-                <p>Press Space or tap/click.</p>
+                <p>Press Space or tap/click to release hook, it will grab resources automatically</p>
               </article>
               <article>
                 <h2>Shop</h2>
@@ -262,7 +291,7 @@ function App() {
                 <p>Earn enough cash to move on.</p>
               </article>
             </div>
-            <button type="button" className="action-btn action-btn--gold" onClick={startNewRun}>
+            <button type="button" className="action-btn action-btn--gold" onClick={startNewRun} disabled={!canStartGame}>
               Start Mining
             </button>
           </div>
@@ -297,7 +326,7 @@ function App() {
       {isShop ? (
         <section className="scene-panel shop-screen">
           <header className="shop-header">
-            <h2>Binary Miner Shop</h2>
+            <h2>Gold Miner Shop</h2>
             <button type="button" className="action-btn action-btn--green" onClick={handleNextLevel}>
               Next Level
             </button>
@@ -370,7 +399,7 @@ function App() {
       {isComplete ? (
         <section className="scene-panel complete-screen">
           <h2>Congratulations</h2>
-          <p>You completed all 12 levels of Binary Miner.</p>
+          <p>You completed all 12 levels of Gold Miner.</p>
           <div className="summary-grid">
             <div>
               <span>Total Earned</span>

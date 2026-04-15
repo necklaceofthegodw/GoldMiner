@@ -168,6 +168,30 @@ body {
   text-shadow: 0 3px 0 #6f4b07;
 }
 
+.nick-label {
+  margin: 0.1rem 0 -0.3rem;
+  color: #ffe6ad;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.nick-input {
+  width: min(100%, 360px);
+  border: 2px solid rgba(255, 214, 117, 0.55);
+  border-radius: 10px;
+  background: rgba(13, 22, 33, 0.92);
+  color: #f8fafc;
+  font: inherit;
+  font-size: 1rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.nick-input:focus {
+  outline: 2px solid rgba(255, 219, 126, 0.6);
+  outline-offset: 1px;
+}
+
 .start-right p {
   margin: 0;
   color: rgba(244, 248, 252, 0.92);
@@ -364,7 +388,7 @@ body {
 
 .shop-item-title {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.55rem;
   min-width: 0;
 }
@@ -381,8 +405,9 @@ body {
 }
 
 .shop-item-copy {
-  display: grid;
-  gap: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
   min-width: 0;
 }
 
@@ -391,12 +416,14 @@ body {
   align-items: center;
   justify-content: flex-start;
   gap: 0.45rem;
+  flex: 0 0 auto;
 }
 
 .shop-item-heading h3 {
   margin: 0;
   color: #ffdfa4;
   font-size: 1rem;
+  white-space: nowrap;
 }
 
 .shop-item-level {
@@ -406,9 +433,13 @@ body {
 }
 
 .shop-item-copy p {
-  margin: 0.36rem 0 0;
+  margin: 0;
   color: rgba(247, 250, 252, 0.9);
   font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .action-btn--buy-side {
@@ -548,6 +579,19 @@ body {
     line-height: 1.24;
   }
 
+  .nick-label {
+    margin: 0;
+    font-size: 0.68rem;
+  }
+
+  .nick-input {
+    max-width: 210px;
+    border-width: 1px;
+    border-radius: 7px;
+    font-size: 0.72rem;
+    padding: 0.32rem 0.45rem;
+  }
+
   .control-grid {
     gap: 0.4rem;
   }
@@ -663,7 +707,7 @@ body {
   }
 
   .shop-item-copy p {
-    margin-top: 0.28rem;
+    margin-top: 0;
     font-size: 0.66rem;
   }
 

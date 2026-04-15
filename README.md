@@ -1,6 +1,6 @@
-# Binary Miner
+# Gold Miner
 
-Binary Miner is a React 19 + Vite canvas game packaged as a Progressive Web App and deployable on Vercel.
+Gold Miner is a React 19 + Vite canvas game packaged as a Progressive Web App and deployable on Vercel.
 
 ## Stack
 
@@ -44,6 +44,13 @@ npm run dev
 npm run build
 npm run preview
 ```
+
+## Decision CSV Log
+
+- Decision events are appended to `logs/decisions.csv` in this project.
+- CSV format: `czas_zdarzenia_s,decyzja` (seconds with one decimal, e.g. `10.7`)
+- At the beginning of each new game, nick is logged first as: `nick,<player_nick>`.
+- Logging works while running through Vite server (`npm run dev` or `npm run preview`).
 
 ## PWA Notes
 

@@ -83,6 +83,10 @@ export const SHOP_ITEMS = [
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const roundToTen = (value) => Math.round(value / 10) * 10;
+const getNowMs = () =>
+  typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
 const getChronoCoreRefund = (level) => {
   const safeLevel = clamp(level, 0, 3);
   if (safeLevel <= 0) return 0;
@@ -163,9 +167,27 @@ function getItemById(items, id) {
 }
 
 function pushDecision(engine, value) {
-  engine.decisions.push(value);
-  if (value === 1) engine.oneDecisions += 1;
-  if (value === 0) engine.zeroDecisions += 1;
+  const decision = value === 1 ? 1 : 0;
+  const elapsedMs = Math.max(0, Math.round(getNowMs() - engine.sessionStartedAtMs));
+  engine.decisions.push(decision);
+  engine.decisionEvents.push({ elapsedMs, decision });
+  if (decision === 1) engine.oneDecisions += 1;
+  if (decision === 0) engine.zeroDecisions += 1;
+}
+
+function createShopDecisionMap() {
+  const map = {};
+  for (const item of SHOP_ITEMS) {
+    map[item.id] = 0;
+  }
+  return map;
+}
+
+function pushShopDecisions(engine) {
+  for (const item of SHOP_ITEMS) {
+    const purchased = (engine.shopPurchases[item.id] ?? 0) > 0;
+    pushDecision(engine, purchased ? 1 : 0);
+  }
 }
 
 function setMessage(engine, text, tone = "neutral") {
@@ -273,12 +295,12 @@ function resolveHookReturn(engine) {
     } else if (target.kind === "diamond") {
       engine.money += target.value;
       engine.stats.diamondCaught += 1;
-      pushDecision(engine, 0);
+      pushDecision(engine, 1);
       setMessage(engine, `Diamond captured: +$${target.value}`, "good");
       emitAudio(engine, "diamond");
     } else if (target.kind === "mystery") {
       engine.stats.mysteryCaught += 1;
-      pushDecision(engine, 0);
+      pushDecision(engine, 1);
       const mystery = rollMystery(engine, target.value);
       engine.money += mystery.money;
       engine.timeLeft = clamp(engine.timeLeft + mystery.time, 0, 110);
@@ -287,6 +309,7 @@ function resolveHookReturn(engine) {
     } else if (target.kind === "rock") {
       engine.money += target.value;
       engine.stats.rockCaught += 1;
+      pushDecision(engine, 0);
       setMessage(
         engine,
         target.value > 0 ? `Rock fragments sold: +$${target.value}` : "Rock snagged. No payout.",
@@ -343,6 +366,7 @@ function finishLevel(engine) {
     }
     engine.phase = "shop";
     engine.pendingNextLevel = clamp(levelNumber + 1, 1, MAX_LEVEL);
+    engine.shopPurchases = createShopDecisionMap();
     setMessage(engine, `Target met. Vault +$${reward}. Upgrade before Level ${engine.pendingNextLevel}.`, "good");
     emitAudio(engine, "level-win");
   } else {
@@ -372,6 +396,7 @@ function updateHook(engine, dt) {
     const tip = getHookTip(hook);
     const hitBoundary = tip.x < 8 || tip.x > GAME_WIDTH - 8 || tip.y > GAME_HEIGHT - 8 || hook.length >= hook.maxLength;
     if (hitBoundary) {
+      pushDecision(engine, 0);
       hook.state = "retracting";
       hook.targetId = null;
       return;
@@ -404,8 +429,8 @@ function updateHook(engine, dt) {
 
 function drawBackground(ctx) {
   const skyGradient = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
-  skyGradient.addColorStop(0, "#f4f9ff");
-  skyGradient.addColorStop(1, "#cfe7f2");
+  skyGradient.addColorStop(0, "#ffe267");
+  skyGradient.addColorStop(1, "#f4c839");
   ctx.fillStyle = skyGradient;
   ctx.fillRect(0, 0, GAME_WIDTH, GROUND_Y);
 
@@ -415,13 +440,6 @@ function drawBackground(ctx) {
   dirtGradient.addColorStop(1, "#3f2411");
   ctx.fillStyle = dirtGradient;
   ctx.fillRect(0, GROUND_Y, GAME_WIDTH, GAME_HEIGHT - GROUND_Y);
-
-  ctx.strokeStyle = "#d8b16d";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(0, GROUND_Y);
-  ctx.lineTo(GAME_WIDTH, GROUND_Y);
-  ctx.stroke();
 
   ctx.fillStyle = "rgba(255, 255, 255, 0.18)";
   for (let i = 0; i < 32; i += 1) {
@@ -569,21 +587,6 @@ function drawHook(ctx, hook) {
   }
 }
 
-function drawRoundedRectPath(ctx, x, y, width, height, radius) {
-  const r = Math.min(radius, width * 0.5, height * 0.5);
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-  ctx.lineTo(x + width, y + height - r);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-  ctx.lineTo(x + r, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
-
 function drawInlineStat(ctx, label, value, x, y, labelColor, valueColor) {
   ctx.font = "700 17px Trebuchet MS, Segoe UI, sans-serif";
   ctx.fillStyle = labelColor;
@@ -670,29 +673,7 @@ function drawMinerAvatar(ctx, centerX, centerY, radius) {
 }
 
 function drawCanvasHud(ctx, engine) {
-  const panelX = 10;
-  const panelY = HUD_PANEL_Y;
-  const panelWidth = GAME_WIDTH - 20;
-  const panelHeight = HUD_PANEL_HEIGHT;
-
-  const bannerGradient = ctx.createLinearGradient(0, panelY, 0, panelY + panelHeight);
-  bannerGradient.addColorStop(0, "#ffe267");
-  bannerGradient.addColorStop(1, "#f4c839");
-  drawRoundedRectPath(ctx, panelX, panelY, panelWidth, panelHeight, 16);
-  ctx.fillStyle = bannerGradient;
-  ctx.fill();
-
-  ctx.strokeStyle = "#ad7505";
-  ctx.lineWidth = 3;
-  drawRoundedRectPath(ctx, panelX, panelY, panelWidth, panelHeight, 16);
-  ctx.stroke();
-
-  ctx.strokeStyle = "rgba(255, 246, 210, 0.85)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(panelX + 12, panelY + panelHeight - 12);
-  ctx.lineTo(panelX + panelWidth - 12, panelY + panelHeight - 12);
-  ctx.stroke();
+  const avatarY = HUD_PANEL_Y + HUD_PANEL_HEIGHT - 3;
 
   const leftLabelColor = "#65410b";
   drawInlineStat(ctx, "Current", `$${engine.money}`, 34, 44, leftLabelColor, "#00892f");
@@ -707,7 +688,7 @@ function drawCanvasHud(ctx, engine) {
   ctx.fillText(`Level: ${engine.levelIndex + 1}`, rightX, 76);
   ctx.textAlign = "left";
 
-  drawMinerAvatar(ctx, GAME_WIDTH / 2, panelY + panelHeight - 3, 46);
+  drawMinerAvatar(ctx, GAME_WIDTH / 2, avatarY, 46);
 }
 
 function drawOverlay(ctx, engine) {
@@ -720,7 +701,7 @@ function drawOverlay(ctx, engine) {
 
   const title =
     engine.phase === "menu"
-      ? "Binary Miner"
+      ? "Gold Miner"
       : engine.phase === "shop"
         ? "Upgrade Shop"
         : engine.phase === "level-clear"
@@ -764,6 +745,9 @@ export function createEngine() {
     oneDecisions: 0,
     zeroDecisions: 0,
     decisions: [],
+    decisionEvents: [],
+    sessionStartedAtMs: getNowMs(),
+    shopPurchases: createShopDecisionMap(),
     message: "Pick a level and start mining.",
     messageTone: "neutral",
     maxUnlockedLevel: 1,
@@ -860,6 +844,7 @@ export function resetProgress(engine) {
   engine.oneDecisions = 0;
   engine.zeroDecisions = 0;
   engine.decisions = [];
+  engine.shopPurchases = createShopDecisionMap();
   engine.maxUnlockedLevel = 1;
   engine.pendingNextLevel = null;
   engine.lastReward = 0;
@@ -894,6 +879,7 @@ export function startLevel(engine, levelNumber) {
   engine.oneDecisions = 0;
   engine.zeroDecisions = 0;
   engine.decisions = [];
+  engine.shopPurchases = createShopDecisionMap();
   engine.phase = "playing";
   engine.pendingNextLevel = null;
   engine.economy = data.economy;
@@ -923,6 +909,7 @@ export function retryLevel(engine) {
 
 export function nextLevel(engine) {
   if (engine.phase === "shop" && engine.pendingNextLevel) {
+    pushShopDecisions(engine);
     startLevel(engine, engine.pendingNextLevel);
     return;
   }
@@ -952,6 +939,7 @@ export function purchaseShopItem(engine, itemId) {
   } else {
     engine.inventory[item.id] += 1;
   }
+  engine.shopPurchases[item.id] = (engine.shopPurchases[item.id] ?? 0) + 1;
 
   engine.bank -= cost;
   setMessage(engine, `${item.name} purchased for $${cost}.`, "good");
@@ -962,6 +950,7 @@ export function purchaseShopItem(engine, itemId) {
 export function openMenu(engine) {
   engine.phase = "menu";
   engine.pendingNextLevel = null;
+  engine.shopPurchases = createShopDecisionMap();
   engine.hook = createHook(engine.upgrades);
   engine.items = [];
   setMessage(engine, "Pick a level and start mining.", "neutral");
@@ -991,6 +980,13 @@ export function consumeAudioEvents(engine) {
   if (engine.audioEvents.length === 0) return [];
   const events = [...engine.audioEvents];
   engine.audioEvents.length = 0;
+  return events;
+}
+
+export function consumeDecisionEvents(engine) {
+  if (engine.decisionEvents.length === 0) return [];
+  const events = [...engine.decisionEvents];
+  engine.decisionEvents.length = 0;
   return events;
 }
 
