@@ -55,7 +55,13 @@ npm run preview
 
 1. In Vercel project settings, add environment variable `BLOB_READ_WRITE_TOKEN`.
 2. Deploy the project.
-3. Open `https://<your-domain>/api/decision-log-csv` to read the full CSV in one place.
+3. Open `https://<your-domain>/api/decision-log-view` for simple browser view:
+   - list of users
+   - click a nick to see only that user's decisions
+4. Optional endpoints:
+   - `https://<your-domain>/api/decision-log-csv` (full CSV)
+   - `https://<your-domain>/api/decision-users` (JSON user summary)
+   - `https://<your-domain>/api/decision-user-log?nick=<nick>` (single user CSV)
 
 ## PWA Notes
 

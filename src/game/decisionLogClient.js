@@ -4,12 +4,27 @@ const MAX_PENDING_ENTRIES = 10000;
 let pendingEntries = [];
 let isFlushing = false;
 let retryTimer = 0;
+let activeNick = "";
+let activeSessionId = "";
+
+function createSessionId() {
+  if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+  return `session-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function normalizeDecisionEntry(entry) {
   if (!entry || typeof entry !== "object") return null;
   const elapsedMs = Math.max(0, Math.round(Number(entry.elapsedMs) || 0));
   const decision = Number(entry.decision) === 1 ? 1 : 0;
-  return { type: "decision", elapsedMs, decision };
+  return {
+    type: "decision",
+    elapsedMs,
+    decision,
+    nick: activeNick,
+    sessionId: activeSessionId,
+  };
 }
 
 function normalizeNick(nick) {
@@ -74,10 +89,13 @@ export function appendDecisionEntries(entries) {
 export function startDecisionSession(nick) {
   const normalizedNick = normalizeNick(nick);
   if (!normalizedNick) return;
+  activeNick = normalizedNick;
+  activeSessionId = createSessionId();
 
   pendingEntries.push({
     type: "nick",
     nick: normalizedNick,
+    sessionId: activeSessionId,
   });
 
   if (pendingEntries.length > MAX_PENDING_ENTRIES) {
