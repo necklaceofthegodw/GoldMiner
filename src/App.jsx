@@ -257,12 +257,34 @@ function App() {
       {!hasEnteredGame ? (
         <section className="scene-panel start-screen" role="dialog" aria-modal="true" aria-labelledby="start-title">
           <div className="start-left">
-            <button type="button" className="nugget-start" onClick={startNewRun} disabled={!canStartGame}>
-              Start
-            </button>
-            <div className="miner-portrait" aria-hidden="true" />
+            <div className="start-button-cluster">
+              <img
+                src="https://cdn-icons-png.flaticon.com/512/4746/4746599.png"
+                alt=""
+                className="start-orbit-icon start-orbit-icon--rock"
+                loading="lazy"
+                aria-hidden="true"
+              />
+              <img
+                src="https://cdn-icons-png.flaticon.com/512/408/408472.png"
+                alt=""
+                className="start-orbit-icon start-orbit-icon--diamond"
+                loading="lazy"
+                aria-hidden="true"
+              />
+              <img
+                src="https://cdn-icons-png.flaticon.com/512/15614/15614073.png"
+                alt=""
+                className="start-orbit-icon start-orbit-icon--mystery"
+                loading="lazy"
+                aria-hidden="true"
+              />
+              <button type="button" className="nugget-start" onClick={startNewRun} disabled={!canStartGame}>
+                Start
+              </button>
+            </div>
           </div>
-                    <div className="start-right">
+          <div className="start-right">
             <h1 id="start-title">Gold Miner</h1>
             <label htmlFor="player-nick" className="nick-label">Nick</label>
             <input
@@ -291,9 +313,6 @@ function App() {
                 <p>Earn enough cash to move on.</p>
               </article>
             </div>
-            <button type="button" className="action-btn action-btn--gold" onClick={startNewRun} disabled={!canStartGame}>
-              Start Mining
-            </button>
           </div>
         </section>
       ) : null}

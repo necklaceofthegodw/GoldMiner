@@ -81,11 +81,11 @@ body {
   height: min(620px, calc(100dvh - (var(--stage-pad) * 2)));
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-areas: "right left";
   overflow: hidden;
   background:
-    radial-gradient(circle at 22% 22%, rgba(255, 214, 94, 0.2), transparent 34%),
-    radial-gradient(circle at 86% 74%, rgba(152, 93, 32, 0.22), transparent 34%),
-    linear-gradient(145deg, #131923, #0b0f17);
+    linear-gradient(180deg, rgba(8, 12, 20, 0.92), rgba(16, 22, 32, 0.86)),
+    #0d1420;
 }
 
 .start-left {
@@ -93,65 +93,99 @@ body {
   padding: 1.4rem;
   display: grid;
   place-items: center;
-  background:
-    linear-gradient(180deg, rgba(8, 12, 20, 0.92), rgba(16, 22, 32, 0.86)),
-    #0d1420;
+  align-content: center;
+  justify-content: center;
+  background: transparent;
+  grid-area: left;
 }
 
 .nugget-start {
-  width: 220px;
-  height: 180px;
-  border-radius: 57% 43% 49% 51% / 55% 37% 63% 45%;
-  border: 3px solid #8a6409;
-  background:
-    radial-gradient(circle at 30% 24%, #fff3b6 5%, #f8dd6f 22%, transparent 42%),
-    linear-gradient(155deg, #f5cd48, #b57807);
-  color: #4d3500;
+  width: 264px;
+  height: 216px;
+  border: 0;
+  border-radius: 0;
+  background: url("https://cdn-icons-png.flaticon.com/512/7969/7969089.png") center / contain no-repeat;
+  background-color: transparent;
+  color: #3a2700;
   font-size: 2.45rem;
   font-weight: 900;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  box-shadow:
-    0 0 56px rgba(255, 216, 104, 0.4),
-    inset 0 -12px 26px rgba(117, 71, 0, 0.32);
+  text-shadow: 0 2px 0 rgba(255, 236, 173, 0.75);
+  box-shadow: none;
+  padding: 0;
 }
 
 .nugget-start:hover {
   transform: translateY(-2px) scale(1.02);
 }
 
-.miner-portrait {
-  width: 250px;
-  height: 250px;
-  border-radius: 50%;
+.nugget-start:disabled {
+  filter: saturate(0.72) brightness(0.86);
+  color: #6d4f1b;
+  text-shadow: 0 1px 0 rgba(244, 221, 159, 0.35);
+  cursor: not-allowed;
+}
+
+.nugget-start:disabled:hover {
+  transform: none;
+}
+
+.start-button-cluster {
+  width: min(340px, 100%);
+  aspect-ratio: 1 / 1;
   position: relative;
-  border: 4px solid rgba(34, 39, 48, 0.85);
-  background:
-    radial-gradient(circle at 38% 18%, #d8dde6 0, #a0a7b3 40%, #656d79 76%, #444b56 100%);
+  display: grid;
+  place-items: center;
+  margin-inline: auto;
 }
 
-.miner-portrait::before {
-  content: "";
+.start-orbit-icon {
   position: absolute;
-  width: 116px;
-  height: 140px;
-  left: 70px;
-  top: 46px;
-  border-radius: 46% 54% 52% 48% / 49% 46% 54% 51%;
-  background: linear-gradient(170deg, #ffd4aa, #e9a86d);
-  box-shadow: inset -10px -12px 0 rgba(186, 111, 51, 0.26);
+  width: 78px;
+  height: 78px;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+  animation: start-orbit-float 3.2s ease-in-out infinite;
 }
 
-.miner-portrait::after {
-  content: "";
-  position: absolute;
-  width: 150px;
-  height: 124px;
-  left: 50px;
-  bottom: 30px;
-  border-radius: 46% 54% 57% 43% / 39% 45% 55% 61%;
-  border: 2px solid rgba(63, 69, 78, 0.65);
-  background: linear-gradient(180deg, #d4d8de, #8e949d);
+.start-orbit-icon--rock {
+  left: -3.2rem;
+  top: 3.4rem;
+  transform: rotate(-12deg);
+  animation-delay: 0.25s;
+}
+
+.start-orbit-icon--diamond {
+  right: -2.85rem;
+  top: -0.25rem;
+  transform: rotate(10deg);
+  animation-delay: 0s;
+}
+
+.start-orbit-icon--mystery {
+  right: -3.3rem;
+  bottom: -1.4rem;
+  transform: rotate(-6deg);
+  animation-delay: 0.45s;
+}
+
+@keyframes start-orbit-float {
+  0%, 100% {
+    transform: translateY(0) rotate(var(--icon-rot, 0deg));
+  }
+  50% {
+    transform: translateY(-8px) rotate(var(--icon-rot, 0deg));
+  }
+}
+
+.start-orbit-icon--rock { --icon-rot: -12deg; }
+.start-orbit-icon--diamond { --icon-rot: 10deg; }
+.start-orbit-icon--mystery { --icon-rot: -6deg; }
+
+.start-button-cluster .nugget-start {
+  z-index: 2;
 }
 
 .start-right {
@@ -159,6 +193,7 @@ body {
   display: grid;
   align-content: center;
   gap: 1rem;
+  grid-area: right;
 }
 
 .start-right h1 {
@@ -538,31 +573,34 @@ body {
   }
 
   .nugget-start {
-    width: 130px;
-    height: 108px;
+    width: 156px;
+    height: 130px;
     font-size: 1.42rem;
     border-width: 2px;
   }
 
-  .miner-portrait {
-    width: 116px;
-    height: 116px;
-    border-width: 2px;
+  .start-button-cluster {
+    width: min(180px, 100%);
   }
 
-  .miner-portrait::before {
-    width: 52px;
-    height: 66px;
-    left: 32px;
-    top: 22px;
+  .start-orbit-icon {
+    width: 38px;
+    height: 38px;
   }
 
-  .miner-portrait::after {
-    width: 70px;
-    height: 56px;
-    left: 21px;
-    bottom: 13px;
-    border-width: 1px;
+  .start-orbit-icon--rock {
+    left: -1.85rem;
+    top: 1.7rem;
+  }
+
+  .start-orbit-icon--diamond {
+    right: -1.5rem;
+    top: -0.15rem;
+  }
+
+  .start-orbit-icon--mystery {
+    right: -1.75rem;
+    bottom: -0.85rem;
   }
 
   .start-right {
@@ -723,7 +761,15 @@ body {
 @media (max-width: 980px) and (orientation: portrait) {
   .start-screen {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "left"
+      "right";
     height: auto;
+  }
+
+  .start-left,
+  .start-right {
+    grid-area: auto;
   }
 
   .start-left {
@@ -732,23 +778,28 @@ body {
     gap: 0.8rem;
   }
 
-  .miner-portrait {
-    width: 210px;
-    height: 210px;
+  .start-button-cluster {
+    width: min(280px, 100%);
   }
 
-  .miner-portrait::before {
-    width: 96px;
-    height: 116px;
-    left: 56px;
-    top: 42px;
+  .start-orbit-icon {
+    width: 64px;
+    height: 64px;
   }
 
-  .miner-portrait::after {
-    width: 126px;
-    height: 102px;
-    left: 40px;
-    bottom: 24px;
+  .start-orbit-icon--rock {
+    left: -2.9rem;
+    top: 2.65rem;
+  }
+
+  .start-orbit-icon--diamond {
+    right: -2.6rem;
+    top: 0.15rem;
+  }
+
+  .start-orbit-icon--mystery {
+    right: -2.6rem;
+    bottom: -1.1rem;
   }
 
   .start-right {
@@ -772,8 +823,8 @@ body {
   }
 
   .nugget-start {
-    width: 182px;
-    height: 150px;
+    width: 218px;
+    height: 180px;
     font-size: 2rem;
   }
 
