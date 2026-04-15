@@ -3,14 +3,26 @@ import { GAME_LEVELS, createSeededRandom, generateLevel } from "./levels";
 export const GAME_WIDTH = 960;
 export const GAME_HEIGHT = 540;
 export const GROUND_Y = 108;
+const HUD_PANEL_Y = 10;
+const HUD_PANEL_HEIGHT = 80;
+const HOOK_ORIGIN_Y = 82;
 
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
 const MAX_LEVEL = GAME_LEVELS.length;
+const HOOK_ICON_SIZE = 24;
+const CARRIED_ITEM_Y_OFFSET = 12;
+const ICON_SOURCES = {
+  gold: "https://cdn-icons-png.flaticon.com/512/7969/7969089.png",
+  rock: "https://cdn-icons-png.flaticon.com/512/4746/4746599.png",
+  hook: "/assets/icons/claw-machine.png",
+  diamond: "https://cdn-icons-png.flaticon.com/512/408/408472.png",
+  mystery: "https://cdn-icons-png.flaticon.com/512/15614/15614073.png",
+};
+const iconCache = new Map();
 
 const DEFAULT_UPGRADES = {
   turboWinch: 0,
   precisionClaw: 0,
-  chronoCore: 0,
   mysteryScanner: 0,
 };
 
@@ -34,6 +46,7 @@ export const SHOP_ITEMS = [
     name: "Turbo Winch",
     description: "Permanent: hook retract speed +12% per level.",
     category: "upgrade",
+    shopIcon: "https://cdn-icons-png.flaticon.com/512/4721/4721089.png",
     baseCost: 320,
     costStep: 220,
     maxLevel: 3,
@@ -43,17 +56,9 @@ export const SHOP_ITEMS = [
     name: "Precision Claw",
     description: "Permanent: hook hit radius +1.4 per level.",
     category: "upgrade",
+    shopIcon: "/assets/icons/claw-machine.png",
     baseCost: 300,
     costStep: 200,
-    maxLevel: 3,
-  },
-  {
-    id: "chronoCore",
-    name: "Chrono Core",
-    description: "Permanent: level start timer +3s per level.",
-    category: "upgrade",
-    baseCost: 340,
-    costStep: 260,
     maxLevel: 3,
   },
   {
@@ -61,6 +66,7 @@ export const SHOP_ITEMS = [
     name: "Mystery Scanner",
     description: "Permanent: mystery crates roll stronger outcomes.",
     category: "upgrade",
+    shopIcon: "/assets/icons/mystery-crate.svg",
     baseCost: 280,
     costStep: 210,
     maxLevel: 3,
@@ -70,23 +76,62 @@ export const SHOP_ITEMS = [
     name: "Pocket Battery",
     description: "Consumable: next level starts with +10s.",
     category: "consumable",
+    shopIcon: "https://cdn-icons-png.flaticon.com/512/17742/17742561.png",
     cost: 260,
   },
 ];
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const roundToTen = (value) => Math.round(value / 10) * 10;
+const getChronoCoreRefund = (level) => {
+  const safeLevel = clamp(level, 0, 3);
+  if (safeLevel <= 0) return 0;
+  return safeLevel * 340 + ((safeLevel - 1) * safeLevel * 260) / 2;
+};
 
 function emitAudio(engine, eventId) {
   engine.audioEvents.push(eventId);
 }
 
+function getIconState(iconId) {
+  if (!ICON_SOURCES[iconId]) return null;
+  const existing = iconCache.get(iconId);
+  if (existing) return existing;
+
+  const image = new Image();
+  const state = {
+    image,
+    status: "loading",
+  };
+  image.onload = () => {
+    state.status = "ready";
+  };
+  image.onerror = () => {
+    state.status = "error";
+  };
+  image.src = ICON_SOURCES[iconId];
+  iconCache.set(iconId, state);
+  return state;
+}
+
+function drawIcon(ctx, iconId, x, y, width, height, rotation = 0) {
+  const state = getIconState(iconId);
+  if (!state || state.status !== "ready") return false;
+
+  ctx.save();
+  ctx.translate(x, y);
+  if (rotation !== 0) ctx.rotate(rotation);
+  ctx.drawImage(state.image, -width * 0.5, -height * 0.5, width, height);
+  ctx.restore();
+  return true;
+}
+
 function createHook(upgrades = DEFAULT_UPGRADES) {
   return {
     originX: GAME_WIDTH / 2,
-    originY: 46,
-    baseLength: 28,
-    length: 28,
+    originY: HOOK_ORIGIN_Y,
+    baseLength: 24,
+    length: 24,
     angle: 0,
     minAngle: -1.12,
     maxAngle: 1.12,
@@ -348,7 +393,7 @@ function updateHook(engine, dt) {
     const tip = getHookTip(hook);
     if (target) {
       target.x = tip.x;
-      target.y = tip.y;
+      target.y = tip.y + CARRIED_ITEM_Y_OFFSET;
     }
 
     if (hook.length <= hook.baseLength) {
@@ -387,6 +432,9 @@ function drawBackground(ctx) {
 }
 
 function drawGold(ctx, item) {
+  const iconDrawn = drawIcon(ctx, "gold", item.x, item.y, item.radius * 2.5, item.radius * 2.5);
+  if (iconDrawn) return;
+
   const gradient = ctx.createRadialGradient(item.x - item.radius * 0.25, item.y - item.radius * 0.35, 2, item.x, item.y, item.radius);
   gradient.addColorStop(0, "#fff5bf");
   gradient.addColorStop(1, "#e1ab18");
@@ -401,6 +449,9 @@ function drawGold(ctx, item) {
 }
 
 function drawDiamond(ctx, item) {
+  const iconDrawn = drawIcon(ctx, "diamond", item.x, item.y, item.radius * 1.3, item.radius * 1.3);
+  if (iconDrawn) return;
+
   ctx.fillStyle = "#8fe5ff";
   ctx.strokeStyle = "#2e6684";
   ctx.lineWidth = 2;
@@ -415,6 +466,9 @@ function drawDiamond(ctx, item) {
 }
 
 function drawMystery(ctx, item) {
+  const iconDrawn = drawIcon(ctx, "mystery", item.x, item.y, item.radius * 2.6, item.radius * 2.6);
+  if (iconDrawn) return;
+
   const size = item.radius * 1.75;
   const x = item.x - size * 0.5;
   const y = item.y - size * 0.45;
@@ -435,6 +489,9 @@ function drawMystery(ctx, item) {
 }
 
 function drawRock(ctx, item) {
+  const iconDrawn = drawIcon(ctx, "rock", item.x, item.y, item.radius * 2.4, item.radius * 2.1);
+  if (iconDrawn) return;
+
   ctx.fillStyle = "#948d82";
   ctx.strokeStyle = "#544b41";
   ctx.lineWidth = 2;
@@ -460,52 +517,197 @@ function drawItems(ctx, items) {
 
 function drawHook(ctx, hook) {
   const tip = getHookTip(hook);
-  ctx.strokeStyle = "#f1f5f9";
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(23, 27, 36, 0.92)";
+  ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(hook.originX, hook.originY);
   ctx.lineTo(tip.x, tip.y);
   ctx.stroke();
 
-  ctx.fillStyle = "#e2e8f0";
+  ctx.strokeStyle = "rgba(250, 246, 229, 0.8)";
+  ctx.lineWidth = 1.2;
   ctx.beginPath();
-  ctx.arc(hook.originX, hook.originY, 10, 0, Math.PI * 2);
+  ctx.moveTo(hook.originX, hook.originY);
+  ctx.lineTo(tip.x, tip.y);
+  ctx.stroke();
+
+  ctx.fillStyle = "#f1f5f9";
+  ctx.beginPath();
+  ctx.arc(hook.originX, hook.originY, 6.5, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = "#94a3b8";
-  ctx.lineWidth = 2;
+  const hookIconDrawn = drawIcon(
+    ctx,
+    "hook",
+    tip.x,
+    tip.y,
+    HOOK_ICON_SIZE,
+    HOOK_ICON_SIZE,
+    -hook.angle
+  );
+  if (!hookIconDrawn) {
+    ctx.save();
+    ctx.translate(tip.x, tip.y);
+    ctx.rotate(hook.angle);
+
+    ctx.strokeStyle = "#2d3645";
+    ctx.fillStyle = "#e6edf5";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 7.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    const clawSpread = 6.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-clawSpread, 10);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(clawSpread, 10);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawRoundedRectPath(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width * 0.5, height * 0.5);
   ctx.beginPath();
-  ctx.arc(tip.x, tip.y, 8, 0, Math.PI * 2);
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawInlineStat(ctx, label, value, x, y, labelColor, valueColor) {
+  ctx.font = "700 17px Trebuchet MS, Segoe UI, sans-serif";
+  ctx.fillStyle = labelColor;
+  ctx.fillText(label, x, y);
+  const labelWidth = ctx.measureText(label).width;
+  ctx.fillStyle = valueColor;
+  ctx.fillText(value, x + labelWidth + 7, y);
+}
+
+function drawMinerAvatar(ctx, centerX, centerY, radius) {
+  const frameGradient = ctx.createLinearGradient(centerX, centerY - radius, centerX, centerY + radius);
+  frameGradient.addColorStop(0, "#1e57cf");
+  frameGradient.addColorStop(1, "#143389");
+  ctx.fillStyle = frameGradient;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(253, 213, 98, 0.7)";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
   ctx.stroke();
 
-  const clawSpread = 7;
+  ctx.save();
   ctx.beginPath();
-  ctx.moveTo(tip.x, tip.y);
-  ctx.lineTo(tip.x - clawSpread, tip.y + 10);
-  ctx.moveTo(tip.x, tip.y);
-  ctx.lineTo(tip.x + clawSpread, tip.y + 10);
+  ctx.arc(centerX, centerY, radius - 3, 0, Math.PI * 2);
+  ctx.clip();
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+  ctx.fillRect(centerX - 60, centerY + 18, 120, 28);
+
+  ctx.fillStyle = "#6b4225";
+  ctx.fillRect(centerX - 21, centerY + 6, 36, 24);
+
+  ctx.fillStyle = "#a8b1bb";
+  ctx.fillRect(centerX - 30, centerY + 10, 46, 10);
+
+  ctx.fillStyle = "#434d59";
+  ctx.beginPath();
+  ctx.arc(centerX - 7, centerY + 15, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(centerX + 8, centerY + 15, 9, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#e1e8ef";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(centerX - 7, centerY + 15, 4, 0, Math.PI * 2);
+  ctx.arc(centerX + 8, centerY + 15, 4, 0, Math.PI * 2);
   ctx.stroke();
+
+  ctx.fillStyle = "#6a3d1f";
+  ctx.beginPath();
+  ctx.ellipse(centerX + 8, centerY - 3, 12, 16, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#eaaf73";
+  ctx.beginPath();
+  ctx.ellipse(centerX - 4, centerY - 16, 12, 14, 0.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#f6d35a";
+  ctx.beginPath();
+  ctx.ellipse(centerX - 2, centerY - 22, 14, 8, -0.08, Math.PI, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#5e3f05";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(centerX - 18, centerY - 22);
+  ctx.lineTo(centerX + 8, centerY - 22);
+  ctx.stroke();
+
+  ctx.fillStyle = "#f1d7b8";
+  ctx.beginPath();
+  ctx.ellipse(centerX - 12, centerY - 17, 4.5, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#f8fbff";
+  ctx.fillRect(centerX + 15, centerY + 9, 12, 5);
+  ctx.restore();
 }
 
 function drawCanvasHud(ctx, engine) {
-  const padding = 14;
-  ctx.fillStyle = "rgba(11, 20, 29, 0.72)";
-  ctx.fillRect(12, 12, GAME_WIDTH - 24, 46);
+  const panelX = 10;
+  const panelY = HUD_PANEL_Y;
+  const panelWidth = GAME_WIDTH - 20;
+  const panelHeight = HUD_PANEL_HEIGHT;
 
-  ctx.fillStyle = "#f8fafc";
-  ctx.font = "600 16px Trebuchet MS, Segoe UI, sans-serif";
-  ctx.fillText(`Level ${engine.levelIndex + 1}/12`, 24, 41);
-  ctx.fillText(`Time: ${Math.ceil(engine.timeLeft)}s`, 185, 41);
-  ctx.fillText(`Goal: $${engine.goal}`, 322, 41);
-  ctx.fillText(`Cash: $${engine.money}`, 485, 41);
-  ctx.fillText(`Vault: $${engine.bank}`, 634, 41);
+  const bannerGradient = ctx.createLinearGradient(0, panelY, 0, panelY + panelHeight);
+  bannerGradient.addColorStop(0, "#ffe267");
+  bannerGradient.addColorStop(1, "#f4c839");
+  drawRoundedRectPath(ctx, panelX, panelY, panelWidth, panelHeight, 16);
+  ctx.fillStyle = bannerGradient;
+  ctx.fill();
 
-  const width = 170;
-  const progress = clamp(engine.money / engine.goal, 0, 1);
-  ctx.fillStyle = "rgba(255,255,255,0.2)";
-  ctx.fillRect(GAME_WIDTH - width - padding, 28, width, 12);
-  ctx.fillStyle = progress >= 1 ? "#22c55e" : "#f59e0b";
-  ctx.fillRect(GAME_WIDTH - width - padding, 28, width * progress, 12);
+  ctx.strokeStyle = "#ad7505";
+  ctx.lineWidth = 3;
+  drawRoundedRectPath(ctx, panelX, panelY, panelWidth, panelHeight, 16);
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(255, 246, 210, 0.85)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(panelX + 12, panelY + panelHeight - 12);
+  ctx.lineTo(panelX + panelWidth - 12, panelY + panelHeight - 12);
+  ctx.stroke();
+
+  const leftLabelColor = "#65410b";
+  drawInlineStat(ctx, "Current", `$${engine.money}`, 34, 44, leftLabelColor, "#00892f");
+  drawInlineStat(ctx, "Vault", `$${engine.bank}`, 205, 44, leftLabelColor, "#0f5ca8");
+  drawInlineStat(ctx, "Goal", `$${engine.goal}`, 34, 76, leftLabelColor, "#b35e00");
+
+  const rightX = GAME_WIDTH - 34;
+  ctx.textAlign = "right";
+  ctx.font = "700 17px Trebuchet MS, Segoe UI, sans-serif";
+  ctx.fillStyle = leftLabelColor;
+  ctx.fillText(`Time: ${Math.ceil(engine.timeLeft)}`, rightX, 44);
+  ctx.fillText(`Level: ${engine.levelIndex + 1}`, rightX, 76);
+  ctx.textAlign = "left";
+
+  drawMinerAvatar(ctx, GAME_WIDTH / 2, panelY + panelHeight - 3, 46);
 }
 
 function drawOverlay(ctx, engine) {
@@ -536,7 +738,7 @@ function drawOverlay(ctx, engine) {
 }
 
 function applyInventoryStartBonuses(engine) {
-  let bonusTime = engine.upgrades.chronoCore * 3;
+  let bonusTime = 0;
   let consumed = false;
 
   if (engine.inventory.timeBoost > 0) {
@@ -587,16 +789,18 @@ export function setAudioEnabled(engine, enabled) {
 export function applySaveData(engine, saveData) {
   if (!saveData || typeof saveData !== "object") return;
 
+  const legacyChronoCoreLevel = clamp(Number(saveData?.upgrades?.chronoCore) || 0, 0, 3);
+  const legacyChronoRefund = getChronoCoreRefund(legacyChronoCoreLevel);
+
   engine.maxUnlockedLevel = clamp(
     Number(saveData.maxUnlockedLevel) || 1,
     1,
     MAX_LEVEL
   );
-  engine.bank = Math.max(0, Number(saveData.bank) || 0);
+  engine.bank = Math.max(0, Number(saveData.bank) || 0) + legacyChronoRefund;
   engine.upgrades = {
     turboWinch: clamp(Number(saveData?.upgrades?.turboWinch) || 0, 0, 3),
     precisionClaw: clamp(Number(saveData?.upgrades?.precisionClaw) || 0, 0, 3),
-    chronoCore: clamp(Number(saveData?.upgrades?.chronoCore) || 0, 0, 3),
     mysteryScanner: clamp(Number(saveData?.upgrades?.mysteryScanner) || 0, 0, 3),
   };
   engine.inventory = {
@@ -777,9 +981,9 @@ export function updateEngine(engine, dt) {
 export function drawEngine(ctx, engine) {
   ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
   drawBackground(ctx);
+  drawCanvasHud(ctx, engine);
   drawItems(ctx, engine.items);
   drawHook(ctx, engine.hook);
-  drawCanvasHud(ctx, engine);
   drawOverlay(ctx, engine);
 }
 

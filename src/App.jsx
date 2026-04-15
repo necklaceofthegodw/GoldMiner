@@ -246,20 +246,20 @@ function App() {
             <div className="miner-portrait" aria-hidden="true" />
           </div>
                     <div className="start-right">
-            <h1 id="start-title">Gold Miner</h1>
-            <p>Zlap jak najwiecej surowcow zanim minie czas.</p>
+            <h1 id="start-title">Binary Miner</h1>
+            <p>Grab as many resources as you can before time runs out.</p>
             <div className="control-grid">
               <article>
                 <h2>Hook</h2>
-                <p>Spacja lub klikniecie.</p>
+                <p>Press Space or tap/click.</p>
               </article>
               <article>
-                <h2>Sklep</h2>
-                <p>Kupuj ulepszenia, aby szybciej zdobywac surowce.</p>
+                <h2>Shop</h2>
+                <p>Buy upgrades to gather resources faster.</p>
               </article>
               <article>
-                <h2>Cel</h2>
-                <p>Zdobadz wystarczajaca ilosc kasy, aby przejsc dalej.</p>
+                <h2>Goal</h2>
+                <p>Earn enough cash to move on.</p>
               </article>
             </div>
             <button type="button" className="action-btn action-btn--gold" onClick={startNewRun}>
@@ -271,39 +271,39 @@ function App() {
 
       {isSummary ? (
         <section className="scene-panel summary-screen">
-          <h2>Podsumowanie Poziomu {snapshot.level}</h2>
+          <h2>Level {snapshot.level} Summary</h2>
           <div className="summary-grid">
             <div>
-              <span>Cel</span>
+              <span>Goal</span>
               <strong>{formatMoney(snapshot.goal)}</strong>
             </div>
             <div>
-              <span>Zebrane</span>
+              <span>Collected</span>
               <strong>{formatMoney(snapshot.money)}</strong>
             </div>
             <div>
-              <span>Nagroda do sejfu</span>
+              <span>Vault Reward</span>
               <strong>{formatMoney(snapshot.lastReward)}</strong>
             </div>
             <div>
-              <span>Decyzje 1/0</span>
+              <span>1/0 Decisions</span>
               <strong>{snapshot.oneDecisions}/{snapshot.zeroDecisions}</strong>
             </div>
           </div>
-          <p className="scene-note">Sklep otwiera sie za chwile...</p>
+          <p className="scene-note">Shop opens in a moment...</p>
         </section>
       ) : null}
 
       {isShop ? (
         <section className="scene-panel shop-screen">
           <header className="shop-header">
-            <h2>Gold Miner Shop</h2>
+            <h2>Binary Miner Shop</h2>
             <button type="button" className="action-btn action-btn--green" onClick={handleNextLevel}>
               Next Level
             </button>
           </header>
           <p className="speech">
-            Kliknij przedmioty, ktore chcesz kupic. Gdy jestes gotowy, przejdz do nastepnego poziomu.
+            Click the items you want to buy. When you are ready, move to the next level.
           </p>
           <p className="wallet">Vault Cash: <strong>{formatMoney(snapshot.bank)}</strong></p>
           <div className="shop-list">
@@ -312,14 +312,21 @@ function App() {
               const disabled = !item.affordable || item.isMaxed;
               return (
                 <article key={item.id} className="shop-item-card">
-                  <div className="shop-item-top">
-                    <h3>{item.name}</h3>
-                    <span>{levelLabel}</span>
+                  <div className="shop-item-main">
+                    <div className="shop-item-title">
+                      {item.shopIcon ? <img src={item.shopIcon} alt="" className="shop-item-icon" loading="lazy" /> : null}
+                      <div className="shop-item-copy">
+                        <div className="shop-item-heading">
+                          <h3>{item.name}</h3>
+                          <span className="shop-item-level">{levelLabel}</span>
+                        </div>
+                        <p>{item.description}</p>
+                      </div>
+                    </div>
                   </div>
-                  <p>{item.description}</p>
                   <button
                     type="button"
-                    className="action-btn action-btn--buy"
+                    className="action-btn action-btn--buy action-btn--buy-side"
                     disabled={disabled}
                     onClick={() => handlePurchase(item.id)}
                   >
@@ -334,47 +341,47 @@ function App() {
 
       {isFailed ? (
         <section className="scene-panel fail-screen">
-          <h2>Przegrales</h2>
-          <p>Nie udalo sie dobic celu na poziomie {snapshot.level}.</p>
+          <h2>Level Failed</h2>
+          <p>You did not reach the goal on level {snapshot.level}.</p>
           <div className="summary-grid">
             <div>
-              <span>Cel</span>
+              <span>Goal</span>
               <strong>{formatMoney(snapshot.goal)}</strong>
             </div>
             <div>
-              <span>Zebrane</span>
+              <span>Collected</span>
               <strong>{formatMoney(snapshot.money)}</strong>
             </div>
             <div>
-              <span>Decyzje lacznie</span>
+              <span>Total Decisions</span>
               <strong>{binaryTotal}</strong>
             </div>
             <div>
-              <span>Ukonczone poziomy</span>
+              <span>Completed Levels</span>
               <strong>{Math.max(0, snapshot.level - 1)}</strong>
             </div>
           </div>
           <button type="button" className="action-btn action-btn--gold" onClick={startNewRun}>
-            Sprobuj od poczatku
+            Start Over
           </button>
         </section>
       ) : null}
 
       {isComplete ? (
         <section className="scene-panel complete-screen">
-          <h2>Gratulacje</h2>
-          <p>Ukonczyles wszystkie 12 poziomow Binary Miner.</p>
+          <h2>Congratulations</h2>
+          <p>You completed all 12 levels of Binary Miner.</p>
           <div className="summary-grid">
             <div>
-              <span>Lacznie zarobione</span>
+              <span>Total Earned</span>
               <strong>{formatMoney(snapshot.stats.totalEarned)}</strong>
             </div>
             <div>
-              <span>Wygrane poziomy</span>
+              <span>Levels Won</span>
               <strong>{snapshot.stats.totalWins}</strong>
             </div>
             <div>
-              <span>Zloto</span>
+              <span>Gold</span>
               <strong>{snapshot.stats.goldCaught}</strong>
             </div>
             <div>
@@ -383,15 +390,15 @@ function App() {
             </div>
           </div>
           <button type="button" className="action-btn action-btn--gold" onClick={startNewRun}>
-            Zagraj jeszcze raz
+            Play Again
           </button>
         </section>
       ) : null}
 
       <section className="rotate-lock" aria-hidden={!isPortraitMobile}>
         <div className="rotate-lock__card">
-          <h2>Obroc telefon</h2>
-          <p>Ta gra dziala w poziomie. Przekrec urzadzenie poziomo, aby wszystko bylo widoczne.</p>
+          <h2>Rotate Your Phone</h2>
+          <p>This game is designed for landscape mode. Rotate your device horizontally to see everything.</p>
         </div>
       </section>
     </div>

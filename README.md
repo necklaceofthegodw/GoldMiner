@@ -65,3 +65,19 @@ On Vercel:
 2. Build command: `npm run build`
 3. Output directory: `dist`
 4. Deploy.
+
+## Icon Attribution
+
+The gameplay/shop icons use these external assets (Flaticon free use with attribution):
+
+- Gold Nugget: https://www.flaticon.com/free-icon/gold-nugget_7969089
+- Stone: https://www.flaticon.com/free-icon/stone_4746599
+- Diamond: https://www.flaticon.com/free-icon/diamond_408472
+- Mystery Item: https://www.flaticon.com/free-icon/money_15614073
+- Time Boost (Clock): https://www.flaticon.com/free-icon/clock_17742561
+- Turbo Winch (Strength): https://www.flaticon.com/free-icon/arm-muscle_4721089
+
+Additional local assets used:
+
+- Hook icon: `public/assets/icons/claw-machine.png` (provided in-project)
+- Mystery Scanner shop icon: `public/assets/icons/mystery-crate.svg` (project-created)
