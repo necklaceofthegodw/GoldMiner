@@ -6,6 +6,7 @@ export const GROUND_Y = 108;
 const HUD_PANEL_Y = 10;
 const HUD_PANEL_HEIGHT = 80;
 const HOOK_ORIGIN_Y = 82;
+const HOOK_END_ANGLE = 1.12 + (10 * Math.PI) / 180;
 
 const SAVE_VERSION = 2;
 const MAX_LEVEL = GAME_LEVELS.length;
@@ -137,8 +138,8 @@ function createHook(upgrades = DEFAULT_UPGRADES) {
     baseLength: 24,
     length: 24,
     angle: 0,
-    minAngle: -1.12,
-    maxAngle: 1.12,
+    minAngle: -HOOK_END_ANGLE,
+    maxAngle: HOOK_END_ANGLE,
     swingDirection: 1,
     swingSpeed: 1.55,
     state: "swing",
