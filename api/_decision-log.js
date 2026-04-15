@@ -8,7 +8,7 @@ function escapeCsv(value) {
   return `"${text.replace(/"/g, "\"\"")}"`;
 }
 
-function normalizeNick(value) {
+export function normalizeNick(value) {
   const nick = String(value ?? "").trim().replace(/[\r\n]+/g, " ");
   if (!nick) return "";
   return nick.slice(0, 64);

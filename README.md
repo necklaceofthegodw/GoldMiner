@@ -58,6 +58,7 @@ npm run preview
 3. Open `https://<your-domain>/api/decision-log-view` for simple browser view:
    - list of users
    - click a nick to see only that user's decisions
+   - delete one user's logs or delete all logs directly from the page
 4. Optional endpoints:
    - `https://<your-domain>/api/decision-log-csv` (full CSV)
    - `https://<your-domain>/api/decision-users` (JSON user summary)

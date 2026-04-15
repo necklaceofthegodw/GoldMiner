@@ -1,6 +1,6 @@
 import { get, list } from "@vercel/blob";
 import { TextDecoder } from "node:util";
-import { LOG_CHUNK_PREFIX, normalizeIncomingEntries, parseLegacyCsvChunk } from "./_decision-log.js";
+import { LOG_CHUNK_PREFIX, normalizeIncomingEntries, normalizeNick, parseLegacyCsvChunk } from "./_decision-log.js";
 
 async function readStreamAsText(stream) {
   const reader = stream.getReader();
@@ -63,4 +63,23 @@ export async function readAllEntries() {
     entries.push(...chunkEntries);
   }
   return entries;
+}
+
+export async function listAllChunkPathnames() {
+  const blobs = await listAllChunks();
+  return blobs.map((blob) => blob.pathname);
+}
+
+export async function findChunkPathnamesForNick(nick) {
+  const targetNick = normalizeNick(nick);
+  if (!targetNick) return [];
+
+  const blobs = await listAllChunks();
+  const matching = [];
+  for (const blob of blobs) {
+    const chunkEntries = await readChunkEntries(blob.pathname);
+    const hasNick = chunkEntries.some((entry) => normalizeNick(entry?.nick) === targetNick);
+    if (hasNick) matching.push(blob.pathname);
+  }
+  return matching;
 }
