@@ -7,6 +7,8 @@ const HUD_PANEL_Y = 10;
 const HUD_PANEL_HEIGHT = 80;
 const HOOK_ORIGIN_Y = 82;
 const HOOK_END_ANGLE = 1.12 + (10 * Math.PI) / 180;
+const HUD_MONEY_TARGET_X = 136;
+const HUD_MONEY_TARGET_Y = 44;
 
 const SAVE_VERSION = 2;
 const MAX_LEVEL = GAME_LEVELS.length;
@@ -96,6 +98,20 @@ const getChronoCoreRefund = (level) => {
 
 function emitAudio(engine, eventId) {
   engine.audioEvents.push(eventId);
+}
+
+function addMoneyFlyup(engine, amount, startX, startY) {
+  const safeAmount = Math.max(0, Math.round(Number(amount) || 0));
+  engine.moneyFlyups.push({
+    amount: safeAmount,
+    startX,
+    startY,
+    targetX: HUD_MONEY_TARGET_X,
+    targetY: HUD_MONEY_TARGET_Y,
+    age: 0,
+    duration: 1.48,
+    arcHeight: 22,
+  });
 }
 
 function getIconState(iconId) {
@@ -280,6 +296,14 @@ function rollMystery(engine, averageValue) {
   };
 }
 
+function updateMoneyFlyups(engine, dt) {
+  if (engine.moneyFlyups.length === 0) return;
+  for (const flyup of engine.moneyFlyups) {
+    flyup.age += dt;
+  }
+  engine.moneyFlyups = engine.moneyFlyups.filter((flyup) => flyup.age < flyup.duration);
+}
+
 function resolveHookReturn(engine) {
   const hook = engine.hook;
   const target = getItemById(engine.items, hook.targetId);
@@ -289,12 +313,14 @@ function resolveHookReturn(engine) {
 
     if (target.kind === "gold") {
       engine.money += target.value;
+      addMoneyFlyup(engine, target.value, target.x, target.y);
       engine.stats.goldCaught += 1;
       pushDecision(engine, 1);
       setMessage(engine, `Gold secured: +$${target.value}`, "good");
       emitAudio(engine, "gold");
     } else if (target.kind === "diamond") {
       engine.money += target.value;
+      addMoneyFlyup(engine, target.value, target.x, target.y);
       engine.stats.diamondCaught += 1;
       pushDecision(engine, 1);
       setMessage(engine, `Diamond captured: +$${target.value}`, "good");
@@ -304,11 +330,13 @@ function resolveHookReturn(engine) {
       pushDecision(engine, 1);
       const mystery = rollMystery(engine, target.value);
       engine.money += mystery.money;
+      addMoneyFlyup(engine, mystery.money, target.x, target.y);
       engine.timeLeft = clamp(engine.timeLeft + mystery.time, 0, 110);
       setMessage(engine, `${mystery.text}${mystery.money > 0 ? ` +$${mystery.money}` : ""}`, mystery.tone);
       emitAudio(engine, "mystery");
     } else if (target.kind === "rock") {
       engine.money += target.value;
+      addMoneyFlyup(engine, target.value, target.x, target.y);
       engine.stats.rockCaught += 1;
       pushDecision(engine, 0);
       setMessage(
@@ -684,12 +712,44 @@ function drawCanvasHud(ctx, engine) {
   const rightX = GAME_WIDTH - 34;
   ctx.textAlign = "right";
   ctx.font = "700 17px Trebuchet MS, Segoe UI, sans-serif";
-  ctx.fillStyle = leftLabelColor;
+  ctx.fillStyle = engine.timeLeft < 11 ? "#cf1f1f" : leftLabelColor;
   ctx.fillText(`Time: ${Math.ceil(engine.timeLeft)}`, rightX, 44);
+  ctx.fillStyle = leftLabelColor;
   ctx.fillText(`Level: ${engine.levelIndex + 1}`, rightX, 76);
   ctx.textAlign = "left";
 
   drawMinerAvatar(ctx, GAME_WIDTH / 2, avatarY, 46);
+}
+
+function drawMoneyFlyups(ctx, engine) {
+  if (engine.moneyFlyups.length === 0) return;
+
+  for (const flyup of engine.moneyFlyups) {
+    const t = clamp(flyup.age / flyup.duration, 0, 1);
+    const eased = t < 0.5 ? 4 * t * t * t : 1 - ((-2 * t + 2) ** 3) / 2;
+    const x = flyup.startX + (flyup.targetX - flyup.startX) * eased;
+    const y =
+      flyup.startY +
+      (flyup.targetY - flyup.startY) * eased -
+      Math.sin(Math.PI * t) * flyup.arcHeight;
+    const alpha = t < 0.86 ? 1 : 1 - (t - 0.86) / 0.14;
+    const scale = 1 - t * 0.16;
+
+    ctx.save();
+    ctx.globalAlpha = clamp(alpha, 0, 1);
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.font = "800 24px Trebuchet MS, Segoe UI, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "rgba(30, 18, 8, 0.55)";
+    ctx.fillStyle = flyup.amount > 0 ? "#ffe06e" : "#e4e6ea";
+    const text = `$${flyup.amount}`;
+    ctx.strokeText(text, 0, 0);
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
+  }
 }
 
 function drawOverlay(ctx, engine) {
@@ -743,6 +803,7 @@ export function createEngine() {
     bank: 0,
     hook: createHook(DEFAULT_UPGRADES),
     items: [],
+    moneyFlyups: [],
     oneDecisions: 0,
     zeroDecisions: 0,
     decisions: [],
@@ -842,6 +903,7 @@ export function resetProgress(engine) {
   engine.bank = 0;
   engine.hook = createHook(DEFAULT_UPGRADES);
   engine.items = [];
+  engine.moneyFlyups = [];
   engine.oneDecisions = 0;
   engine.zeroDecisions = 0;
   engine.decisions = [];
@@ -877,6 +939,7 @@ export function startLevel(engine, levelNumber) {
   engine.money = 0;
   engine.items = data.items.map((item) => ({ ...item, captured: false }));
   engine.hook = createHook(engine.upgrades);
+  engine.moneyFlyups = [];
   engine.oneDecisions = 0;
   engine.zeroDecisions = 0;
   engine.decisions = [];
@@ -954,12 +1017,14 @@ export function openMenu(engine) {
   engine.shopPurchases = createShopDecisionMap();
   engine.hook = createHook(engine.upgrades);
   engine.items = [];
+  engine.moneyFlyups = [];
   setMessage(engine, "Pick a level and start mining.", "neutral");
 }
 
 export function updateEngine(engine, dt) {
-  if (engine.phase !== "playing") return;
   const step = clamp(dt, 0, 0.05);
+  updateMoneyFlyups(engine, step);
+  if (engine.phase !== "playing") return;
   engine.timeLeft = clamp(engine.timeLeft - step, 0, 140);
   updateHook(engine, step);
 
@@ -974,6 +1039,7 @@ export function drawEngine(ctx, engine) {
   drawCanvasHud(ctx, engine);
   drawItems(ctx, engine.items);
   drawHook(ctx, engine.hook);
+  drawMoneyFlyups(ctx, engine);
   drawOverlay(ctx, engine);
 }
 

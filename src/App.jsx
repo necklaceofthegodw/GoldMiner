@@ -333,10 +333,6 @@ function App() {
               <span>Vault Reward</span>
               <strong>{formatMoney(snapshot.lastReward)}</strong>
             </div>
-            <div>
-              <span>1/0 Decisions</span>
-              <strong>{snapshot.oneDecisions}/{snapshot.zeroDecisions}</strong>
-            </div>
           </div>
           <p className="scene-note">Shop opens in a moment...</p>
         </section>
