@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 220" fill="none">
+  <defs>
+    <linearGradient id="metal" x1="80" x2="80" y1="34" y2="186" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6E3E13"/>
+      <stop offset="1" stop-color="#2B1407"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="80" x2="80" y1="88" y2="170" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF7BA"/>
+      <stop offset=".55" stop-color="#FFD66A"/>
+      <stop offset="1" stop-color="#E39A17"/>
+    </linearGradient>
+    <filter id="glow" width="112" height="138" x="24" y="56" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feGaussianBlur result="effect1_foregroundBlur_1_1" stdDeviation="12"/>
+    </filter>
+  </defs>
+  <path stroke="#2A180B" stroke-linecap="round" stroke-width="7" d="M80 6v44"/>
+  <path stroke="#3C220F" stroke-linecap="round" stroke-width="7" d="M80 38c0 0-12 5-12 16s12 16 12 16 12-5 12-16S80 38 80 38Z"/>
+  <g filter="url(#glow)" opacity=".5">
+    <ellipse cx="80" cy="126" fill="#FFC54E" rx="30" ry="45"/>
+  </g>
+  <path fill="url(#metal)" d="M47 74h66l10 18v64l-18 24H55l-18-24V92z"/>
+  <path fill="#8D5826" d="M40 72h80l6 10H34z"/>
+  <path fill="#4C290E" d="M38 172h84l-12 16H50z"/>
+  <path fill="url(#glass)" d="M57 90h46l7 11v49l-10 15H60l-10-15v-49z"/>
+  <path fill="#FFF8D3" fill-opacity=".75" d="M71 102c9-10 16-10 20 0s4 27-10 38c-14-11-15-28-10-38Z"/>
+  <path stroke="#D9A86B" stroke-linecap="round" stroke-width="6" d="M53 84h54"/>
+  <path stroke="#D9A86B" stroke-linecap="round" stroke-width="6" d="M47 172h66"/>
+  <path stroke="#3C220F" stroke-width="6" d="M63 91v71"/>
+  <path stroke="#3C220F" stroke-width="6" d="M97 91v71"/>
+</svg>

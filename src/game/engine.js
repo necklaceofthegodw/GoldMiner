@@ -1,4 +1,5 @@
 import { GAME_LEVELS, createSeededRandom, generateLevel } from "./levels";
+import { GAME_ICON_SOURCES } from "./iconSources";
 
 export const GAME_WIDTH = 960;
 export const GAME_HEIGHT = 540;
@@ -14,13 +15,7 @@ const SAVE_VERSION = 2;
 const MAX_LEVEL = GAME_LEVELS.length;
 const HOOK_ICON_SIZE = 24;
 const CARRIED_ITEM_Y_OFFSET = 12;
-const ICON_SOURCES = {
-  gold: "https://cdn-icons-png.flaticon.com/512/7969/7969089.png",
-  rock: "https://cdn-icons-png.flaticon.com/512/4746/4746599.png",
-  hook: "/assets/icons/claw-machine.png",
-  diamond: "https://cdn-icons-png.flaticon.com/512/408/408472.png",
-  mystery: "https://cdn-icons-png.flaticon.com/512/15614/15614073.png",
-};
+const ICON_SOURCES = GAME_ICON_SOURCES;
 const iconCache = new Map();
 
 const DEFAULT_UPGRADES = {

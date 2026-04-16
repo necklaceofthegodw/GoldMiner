@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" fill="none">
+  <defs>
+    <linearGradient id="badge" x1="44" x2="44" y1="8" y2="80" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6F4320"/>
+      <stop offset="1" stop-color="#3A200E"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="30" x2="57" y1="20" y2="45" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF0C6"/>
+      <stop offset=".45" stop-color="#FFD36A"/>
+      <stop offset="1" stop-color="#C6841A"/>
+    </linearGradient>
+  </defs>
+  <circle cx="44" cy="44" r="36" fill="url(#badge)" stroke="#B37A41" stroke-width="6"/>
+  <path fill="url(#metal)" d="M25 26c12-8 27-7 37 3-10 13-24 18-41 17-2-7-.6-14 4-20Z"/>
+  <path fill="#D5A158" d="m45 37 7 7-17 18c-4 4-8 3-11 0s-4-7 0-11z"/>
+  <path stroke="#F8E7B8" stroke-linecap="round" stroke-width="4" d="M28 33c12-6 22-5 31 3"/>
+</svg>

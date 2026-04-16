@@ -18,6 +18,7 @@ import {
   updateEngine,
 } from "./game/engine";
 import { appendDecisionEntries, startDecisionSession } from "./game/decisionLogClient";
+import { GAME_ICON_SOURCES } from "./game/iconSources";
 import { loadGameSave, saveGameSave } from "./game/storage";
 
 function formatMoney(value) {
@@ -25,6 +26,9 @@ function formatMoney(value) {
 }
 
 function App() {
+  const startMysteryIcon = GAME_ICON_SOURCES.mystery;
+  const startGoldIcon = GAME_ICON_SOURCES.gold;
+  const startDiamondIcon = GAME_ICON_SOURCES.diamond;
   const canvasRef = useRef(null);
   const summaryTimerRef = useRef(0);
   const nickInputRef = useRef(null);
@@ -41,6 +45,7 @@ function App() {
   const [showLevelSummary, setShowLevelSummary] = useState(false);
   const [isPortraitMobile, setIsPortraitMobile] = useState(false);
   const [playerNick, setPlayerNick] = useState("");
+  const [controlHint, setControlHint] = useState("Press Space to use hook");
 
   const requestLandscapeLock = useCallback(() => {
     if (!window.screen?.orientation?.lock) return;
@@ -141,6 +146,38 @@ function App() {
       if (summaryTimerRef.current) {
         window.clearTimeout(summaryTimerRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!window.matchMedia) return undefined;
+
+    const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
+    const hoverlessQuery = window.matchMedia("(hover: none)");
+    const syncControlHint = () => {
+      const touchCapable =
+        coarsePointerQuery.matches ||
+        hoverlessQuery.matches ||
+        (navigator.maxTouchPoints ?? 0) > 0;
+
+      setControlHint(touchCapable ? "Tap to use hook" : "Press Space to use hook");
+    };
+    const subscribe = (query) => {
+      if (query.addEventListener) {
+        query.addEventListener("change", syncControlHint);
+        return () => query.removeEventListener("change", syncControlHint);
+      }
+
+      query.addListener(syncControlHint);
+      return () => query.removeListener(syncControlHint);
+    };
+
+    syncControlHint();
+    const unsubscribeCoarse = subscribe(coarsePointerQuery);
+    const unsubscribeHover = subscribe(hoverlessQuery);
+    return () => {
+      unsubscribeCoarse();
+      unsubscribeHover();
     };
   }, []);
 
@@ -256,68 +293,121 @@ function App() {
 
       {!hasEnteredGame ? (
         <section
-          className="scene-panel start-screen start-screen--cave"
+          className="scene-panel start-screen start-screen--mine"
           role="dialog"
           aria-modal="true"
           aria-labelledby="start-title"
         >
-          <div className="start-left">
-            <div className="start-button-cluster">
-              <img
-                src="https://cdn-icons-png.flaticon.com/512/4746/4746599.png"
-                alt=""
-                className="start-orbit-icon start-orbit-icon--rock"
-                loading="lazy"
-                aria-hidden="true"
-              />
-              <img
-                src="https://cdn-icons-png.flaticon.com/512/408/408472.png"
-                alt=""
-                className="start-orbit-icon start-orbit-icon--diamond"
-                loading="lazy"
-                aria-hidden="true"
-              />
-              <img
-                src="https://cdn-icons-png.flaticon.com/512/15614/15614073.png"
-                alt=""
-                className="start-orbit-icon start-orbit-icon--mystery"
-                loading="lazy"
-                aria-hidden="true"
-              />
-              <button type="button" className="nugget-start" onClick={startNewRun} disabled={!canStartGame}>
-                Start
-              </button>
-            </div>
-          </div>
-          <div className="start-right">
+          <img
+            src="/assets/start/lantern.svg"
+            alt=""
+            className="start-decor start-decor--lantern"
+            loading="lazy"
+            aria-hidden="true"
+          />
+          <img
+            src="/assets/start/rock-chunk.svg"
+            alt=""
+            className="start-decor start-decor--rock"
+            loading="lazy"
+            aria-hidden="true"
+          />
+          <img
+            src={startDiamondIcon}
+            alt=""
+            className="start-decor start-decor--diamond"
+            loading="lazy"
+            aria-hidden="true"
+          />
+          <img
+            src={startMysteryIcon}
+            alt=""
+            className="start-decor start-decor--mystery"
+            loading="lazy"
+            aria-hidden="true"
+          />
+          <header className="start-hero">
             <h1 id="start-title">Gold Miner</h1>
-            <label htmlFor="player-nick" className="nick-label">Nick</label>
-            <input
-              ref={nickInputRef}
-              id="player-nick"
-              type="text"
-              className="nick-input"
-              value={playerNick}
-              onChange={(event) => setPlayerNick(event.target.value)}
-              maxLength={32}
-              placeholder="Wpisz nick"
-              autoComplete="nickname"
+            <p className="start-tagline">
+              Name your miner, beat the target, and turn every clean hook drop into a bigger haul.
+            </p>
+          </header>
+
+          <div className="start-nugget-shell">
+            <img
+              src={startGoldIcon}
+              alt=""
+              className="start-nugget-asset"
+              loading="lazy"
+              aria-hidden="true"
             />
-            <p>Grab as many resources as you can before time runs out.</p>
-            <div className="control-grid">
-              <article>
-                <h2>Hook</h2>
-                <p>Press Space or tap/click to release hook, it will grab resources automatically</p>
-              </article>
-              <article>
+            <form
+              className="start-form start-form--nugget"
+              onSubmit={(event) => {
+                event.preventDefault();
+                startNewRun();
+              }}
+            >
+              <label htmlFor="player-nick" className="nick-label">Miner Name</label>
+              <input
+                ref={nickInputRef}
+                id="player-nick"
+                type="text"
+                className="nick-input"
+                value={playerNick}
+                onChange={(event) => setPlayerNick(event.target.value)}
+                maxLength={32}
+                placeholder="Enter your name"
+                autoComplete="nickname"
+              />
+              <button type="submit" className="play-cta" disabled={!canStartGame}>
+                <span>PLAY</span>
+              </button>
+            </form>
+          </div>
+
+          <p className="control-hint">{controlHint}</p>
+
+          <div className="start-rule-strip">
+            <article className="start-rule-card">
+              <div className="start-rule-card__head">
+                <img
+                  src="/assets/icons/claw-machine.png"
+                  alt=""
+                  className="start-rule-icon"
+                  loading="lazy"
+                  aria-hidden="true"
+                />
+                <h2>Claw</h2>
+              </div>
+              <p>Drop at the right moment to grab one item.</p>
+            </article>
+            <article className="start-rule-card">
+              <div className="start-rule-card__head">
+                <img
+                  src="/assets/start/pickaxe-badge.svg"
+                  alt=""
+                  className="start-rule-icon"
+                  loading="lazy"
+                  aria-hidden="true"
+                />
                 <h2>Shop</h2>
-                <p>Buy upgrades to gather resources faster.</p>
-              </article>
-              <article>
+              </div>
+              <p>Use vault cash for speed, reach, and boosts.</p>
+            </article>
+            <article className="start-rule-card">
+              <div className="start-rule-card__head">
+                <img
+                  src={startMysteryIcon}
+                  alt=""
+                  className="start-rule-icon"
+                  loading="lazy"
+                  aria-hidden="true"
+                />
                 <h2>Goal</h2>
-                <p>Earn enough cash to move on.</p>
-              </article>
-            </div>
+              </div>
+              <p>Hit the cash target before time runs out.</p>
+            </article>
           </div>
         </section>
       ) : null}
