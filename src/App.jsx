@@ -255,7 +255,12 @@ function App() {
       />
 
       {!hasEnteredGame ? (
-        <section className="scene-panel start-screen" role="dialog" aria-modal="true" aria-labelledby="start-title">
+        <section
+          className="scene-panel start-screen start-screen--cave"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="start-title"
+        >
           <div className="start-left">
             <div className="start-button-cluster">
               <img

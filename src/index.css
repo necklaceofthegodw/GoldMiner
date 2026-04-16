@@ -78,14 +78,42 @@ body {
 }
 
 .start-screen {
+  --start-title-color: #ffd978;
+  --start-title-shadow: 0 3px 0 #6f4b07;
+  --start-copy-color: rgba(244, 248, 252, 0.92);
+  --start-label-color: #ffe6ad;
+  --start-input-border: rgba(255, 214, 117, 0.55);
+  --start-input-bg: rgba(13, 22, 33, 0.92);
+  --start-input-focus: rgba(255, 219, 126, 0.6);
+  --start-card-border: rgba(255, 218, 122, 0.34);
+  --start-card-bg: linear-gradient(145deg, rgba(140, 92, 16, 0.34), rgba(57, 36, 11, 0.3));
+  --start-card-title: #ffe3a7;
+  --start-font-display: "Rockwell", "Trebuchet MS", "Palatino Linotype", serif;
+  --start-font-body: "Trebuchet MS", "Lucida Sans Unicode", "Segoe UI Variable Text", sans-serif;
   height: min(620px, calc(100dvh - (var(--stage-pad) * 2)));
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-areas: "right left";
   overflow: hidden;
+  position: relative;
+  isolation: isolate;
   background:
     linear-gradient(180deg, rgba(8, 12, 20, 0.92), rgba(16, 22, 32, 0.86)),
     #0d1420;
+}
+
+.start-screen > * {
+  position: relative;
+  z-index: 1;
+}
+
+.start-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 22% 18%, rgba(255, 215, 120, 0.16), transparent 38%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .start-left {
@@ -125,6 +153,7 @@ body {
   color: #6d4f1b;
   text-shadow: 0 1px 0 rgba(244, 221, 159, 0.35);
   cursor: not-allowed;
+  animation: none;
 }
 
 .nugget-start:disabled:hover {
@@ -192,20 +221,23 @@ body {
   padding: 2rem 1.9rem;
   display: grid;
   align-content: center;
-  gap: 1rem;
+  gap: 0.9rem;
   grid-area: right;
+  font-family: var(--start-font-body);
 }
 
 .start-right h1 {
   margin: 0;
   font-size: clamp(2rem, 4.3vw, 3.6rem);
-  color: var(--gold-1);
-  text-shadow: 0 3px 0 #6f4b07;
+  color: var(--start-title-color);
+  text-shadow: var(--start-title-shadow);
+  font-family: var(--start-font-display);
+  letter-spacing: 0.015em;
 }
 
 .nick-label {
   margin: 0.1rem 0 -0.3rem;
-  color: #ffe6ad;
+  color: var(--start-label-color);
   font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -213,23 +245,23 @@ body {
 
 .nick-input {
   width: min(100%, 360px);
-  border: 2px solid rgba(255, 214, 117, 0.55);
+  border: 2px solid var(--start-input-border);
   border-radius: 10px;
-  background: rgba(13, 22, 33, 0.92);
+  background: var(--start-input-bg);
   color: #f8fafc;
-  font: inherit;
+  font-family: var(--start-font-body);
   font-size: 1rem;
   padding: 0.55rem 0.7rem;
 }
 
 .nick-input:focus {
-  outline: 2px solid rgba(255, 219, 126, 0.6);
+  outline: 2px solid var(--start-input-focus);
   outline-offset: 1px;
 }
 
 .start-right p {
   margin: 0;
-  color: rgba(244, 248, 252, 0.92);
+  color: var(--start-copy-color);
   line-height: 1.5;
 }
 
@@ -239,22 +271,55 @@ body {
 }
 
 .control-grid article {
-  border: 1px solid rgba(255, 218, 122, 0.34);
+  border: 1px solid var(--start-card-border);
   border-radius: 14px;
   padding: 0.75rem;
-  background: linear-gradient(145deg, rgba(140, 92, 16, 0.34), rgba(57, 36, 11, 0.3));
+  background: var(--start-card-bg);
 }
 
 .control-grid h2 {
   margin: 0;
   font-size: 1.04rem;
-  color: #ffe3a7;
+  color: var(--start-card-title);
 }
 
 .control-grid p {
   margin: 0.3rem 0 0;
   font-size: 0.92rem;
   color: rgba(247, 251, 255, 0.88);
+}
+
+.start-screen--cave {
+  --start-title-color: #ffe39a;
+  --start-title-shadow: 0 4px 0 #825503;
+  --start-copy-color: rgba(247, 240, 224, 0.92);
+  --start-label-color: #f8e1a3;
+  --start-input-border: rgba(253, 202, 98, 0.64);
+  --start-input-bg: rgba(18, 21, 33, 0.9);
+  --start-input-focus: rgba(255, 217, 124, 0.78);
+  --start-card-border: rgba(255, 210, 106, 0.42);
+  --start-card-bg: linear-gradient(130deg, rgba(168, 103, 17, 0.3), rgba(54, 31, 13, 0.36));
+  --start-card-title: #ffe7b0;
+  background:
+    radial-gradient(circle at 22% 16%, rgba(252, 191, 64, 0.24), transparent 35%),
+    radial-gradient(circle at 86% 80%, rgba(53, 107, 170, 0.24), transparent 42%),
+    linear-gradient(160deg, #0b0f1b 0%, #141b2a 48%, #2a1b13 100%);
+}
+
+.start-screen--cave .start-left {
+  background: radial-gradient(circle at 60% 45%, rgba(255, 191, 70, 0.08), transparent 60%);
+}
+
+.start-screen--cave .nugget-start {
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.5));
+}
+
+.start-screen--cave .nugget-start:disabled {
+  filter: saturate(0.72) brightness(0.86);
+}
+
+.start-screen--cave .start-orbit-icon {
+  filter: drop-shadow(0 8px 14px rgba(1, 2, 8, 0.55));
 }
 
 .action-btn {
