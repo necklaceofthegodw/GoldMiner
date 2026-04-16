@@ -776,8 +776,8 @@ body {
 
   .start-screen {
     height: calc(100dvh - (var(--stage-pad) * 2));
-    gap: 0.35rem;
-    padding: 0.65rem 0.8rem 0.6rem;
+    gap: 0.26rem;
+    padding: 0.5rem 0.65rem 0.45rem;
   }
 
   .start-decor--rock {
@@ -806,52 +806,54 @@ body {
   }
 
   .start-hero {
-    gap: 0.18rem;
+    gap: 0.12rem;
   }
 
   .start-hero h1 {
-    font-size: 1.28rem;
+    font-size: 1.2rem;
   }
 
   .start-tagline {
     max-width: 50ch;
-    font-size: 0.56rem;
-    line-height: 1.1;
+    margin-top: 0.12rem;
+    font-size: 0.5rem;
+    line-height: 1.06;
   }
 
   .start-nugget-shell {
-    width: min(320px, 44%);
-    padding: 0.35rem;
+    width: min(300px, 42%);
+    padding: 0.26rem;
   }
 
   .start-nugget-asset {
-    width: min(230px, 88%);
+    width: min(220px, 86%);
   }
 
   .start-form--nugget {
-    width: min(150px, 42%);
-    gap: 0.2rem;
-    padding: 0.14rem 0.24rem 0.04rem;
+    width: min(185px, 60%);
+    gap: 0.24rem;
+    padding: 0.14rem 0.24rem 0.08rem;
+    transform: translateY(calc(-1% + 26px));
   }
 
   .nick-label {
     margin: 0;
-    padding: 0.09rem 0.4rem;
-    font-size: 0.48rem;
+    padding: 0.11rem 0.48rem;
+    font-size: 0.56rem;
   }
 
   .nick-input {
     border-width: 1px;
     border-radius: 10px;
-    font-size: 0.5rem;
-    padding: 0.2rem 0.28rem;
+    font-size: 0.62rem;
+    padding: 0.28rem 0.42rem;
   }
 
   .play-cta {
-    width: min(132px, 78%);
-    min-height: 28px;
-    font-size: 0.56rem;
-    padding: 0.2rem 0.45rem;
+    width: min(150px, 80%);
+    min-height: 30px;
+    font-size: 0.68rem;
+    padding: 0.26rem 0.52rem;
   }
 
   .play-cta:not(:disabled) {
@@ -862,20 +864,20 @@ body {
   }
 
   .control-hint {
-    font-size: 0.78rem;
-    top: calc(0.65rem + 40px);
+    font-size: 0.7rem;
+    top: 0.18rem;
   }
 
   .start-rule-strip {
-    gap: 0.34rem;
-    margin-bottom: 1rem;
+    gap: 0.28rem;
+    margin-bottom: 0.45rem;
   }
 
   .start-rule-card {
     min-height: 0;
     border-radius: 10px;
-    padding: 0.38rem;
-    gap: 0.26rem;
+    padding: 0.3rem 0.36rem 0.34rem;
+    gap: 0.2rem;
   }
 
   .start-rule-card__head {
@@ -894,9 +896,9 @@ body {
 
   .start-rule-card p {
     margin-top: 0;
-    font-size: 0.72rem;
-    line-height: 1.24;
-    min-height: 2.3em;
+    font-size: 0.64rem;
+    line-height: 1.18;
+    min-height: 2.1em;
   }
 
   .action-btn {
@@ -1009,13 +1011,116 @@ body {
   }
 }
 
+@media (max-width: 900px) and (orientation: landscape) {
+  .start-screen {
+    gap: 0.32rem;
+    padding: 0.56rem 0.72rem 0.5rem;
+  }
+
+  .start-hero h1 {
+    font-size: clamp(1.3rem, 3.2vw, 1.8rem);
+  }
+
+  .start-tagline {
+    margin-top: 0.2rem;
+    font-size: clamp(0.6rem, 1.35vw, 0.72rem);
+    line-height: 1.12;
+  }
+
+  .start-nugget-shell {
+    width: min(330px, 46%);
+    padding: 0.3rem;
+  }
+
+  .start-nugget-asset {
+    width: min(242px, 88%);
+  }
+
+  .start-form--nugget {
+    width: min(205px, 66%);
+    gap: 0.28rem;
+    padding: 0.14rem 0.24rem 0.08rem;
+    transform: translateY(calc(-1% + 30px));
+  }
+
+  .nick-label {
+    font-size: 0.6rem;
+    padding: 0.12rem 0.54rem;
+  }
+
+  .nick-input {
+    font-size: 0.68rem;
+    padding: 0.34rem 0.5rem;
+  }
+
+  .play-cta {
+    width: min(164px, 82%);
+    min-height: 32px;
+    font-size: 0.74rem;
+    padding: 0.3rem 0.56rem;
+  }
+
+  .control-hint {
+    font-size: 0.78rem;
+    top: 0.3rem;
+  }
+
+  .start-rule-strip {
+    gap: 0.34rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .start-rule-card {
+    padding: 0.36rem 0.44rem 0.4rem;
+    gap: 0.24rem;
+  }
+
+  .start-rule-card h2 {
+    font-size: 0.84rem;
+  }
+
+  .start-rule-card p {
+    font-size: 0.7rem;
+    line-height: 1.2;
+    min-height: 2.2em;
+  }
+}
+
 @media (max-width: 980px) and (orientation: portrait) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .scene-root {
+    min-height: 100dvh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
   .summary-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 640px) and (orientation: portrait) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .scene-root {
+    min-height: 100dvh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
   .scene-root {
     padding: 0.6rem;
   }
