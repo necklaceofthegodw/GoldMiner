@@ -802,7 +802,7 @@ body {
     right: 1.9rem;
     top: 9.2rem;
     width: 58px;
-    --mystery-offset-y: 78px;
+    --mystery-offset-y: 63px;
   }
 
   .start-hero {
@@ -812,6 +812,7 @@ body {
 
   .start-hero h1 {
     font-size: 1.2rem;
+    transform: translateY(5px);
   }
 
   .start-tagline {
@@ -821,7 +822,7 @@ body {
   .start-nugget-shell {
     width: min(300px, 42%);
     padding: 0.26rem;
-    transform: translateY(-22px);
+    transform: translateY(-37px);
   }
 
   .start-nugget-asset {
@@ -864,12 +865,12 @@ body {
 
   .control-hint {
     font-size: 0.7rem;
-    top: -0.28rem;
+    top: calc(-0.28rem - 15px);
   }
 
   .start-rule-strip {
     gap: 0.28rem;
-    margin-bottom: 0.85rem;
+    margin-bottom: calc(0.85rem + 15px);
   }
 
   .start-rule-card {
@@ -1017,7 +1018,7 @@ body {
   }
 
   .start-decor--mystery {
-    --mystery-offset-y: 86px;
+    --mystery-offset-y: 71px;
   }
 
   .start-hero {
@@ -1026,6 +1027,7 @@ body {
 
   .start-hero h1 {
     font-size: clamp(1.3rem, 3.2vw, 1.8rem);
+    transform: translateY(5px);
   }
 
   .start-tagline {
@@ -1035,7 +1037,7 @@ body {
   .start-nugget-shell {
     width: min(330px, 46%);
     padding: 0.3rem;
-    transform: translateY(-18px);
+    transform: translateY(-33px);
   }
 
   .start-nugget-asset {
@@ -1068,12 +1070,12 @@ body {
 
   .control-hint {
     font-size: 0.78rem;
-    top: -0.2rem;
+    top: calc(-0.2rem - 15px);
   }
 
   .start-rule-strip {
     gap: 0.34rem;
-    margin-bottom: 0.95rem;
+    margin-bottom: calc(0.95rem + 15px);
   }
 
   .start-rule-card {
