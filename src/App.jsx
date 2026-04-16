@@ -220,6 +220,10 @@ function App() {
     refreshSnapshot(true);
   }, [engine, playerNick, refreshSnapshot, requestFullscreen, requestLandscapeLock]);
 
+  const handleNickFocus = useCallback(() => {
+    requestLandscapeLock();
+  }, [requestLandscapeLock]);
+
   const handleCanvasTap = useCallback(() => {
     if (!hasEnteredGame) return;
     if (snapshot.phase !== "playing") return;
@@ -356,6 +360,7 @@ function App() {
                 className="nick-input"
                 value={playerNick}
                 onChange={(event) => setPlayerNick(event.target.value)}
+                onFocus={handleNickFocus}
                 maxLength={32}
                 placeholder="Enter your name"
                 autoComplete="nickname"

@@ -870,8 +870,8 @@ body {
 
   .start-rule-strip {
     gap: 0.3rem;
-    margin-bottom: 0.2rem;
-    transform: translateY(-52px);
+    margin-bottom: calc(env(safe-area-inset-bottom) + 5px);
+    transform: none;
   }
 
   .start-rule-card {
@@ -1077,8 +1077,8 @@ body {
 
   .start-rule-strip {
     gap: 0.38rem;
-    margin-bottom: 0.3rem;
-    transform: translateY(-44px);
+    margin-bottom: calc(env(safe-area-inset-bottom) + 5px);
+    transform: none;
   }
 
   .start-rule-card {
