@@ -416,7 +416,7 @@ body {
   width: 100%;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(0.55rem, 1.2vw, 0.8rem);
+  gap: clamp(0.68rem, 1.45vw, 1rem);
   align-self: end;
   margin-top: auto;
   margin-bottom: 1.9rem;
@@ -838,8 +838,8 @@ body {
 
   .nick-label {
     margin: 0;
-    padding: 0.11rem 0.48rem;
-    font-size: 0.56rem;
+    padding: 0.14rem 0.62rem;
+    font-size: 0.68rem;
   }
 
   .nick-input {
@@ -869,7 +869,7 @@ body {
   }
 
   .start-rule-strip {
-    gap: 0.22rem;
+    gap: 0.3rem;
     margin-bottom: 0.2rem;
     transform: translateY(-52px);
   }
@@ -1054,8 +1054,8 @@ body {
   }
 
   .nick-label {
-    font-size: 0.6rem;
-    padding: 0.12rem 0.54rem;
+    font-size: 0.72rem;
+    padding: 0.15rem 0.66rem;
   }
 
   .nick-input {
@@ -1076,7 +1076,7 @@ body {
   }
 
   .start-rule-strip {
-    gap: 0.28rem;
+    gap: 0.38rem;
     margin-bottom: 0.3rem;
     transform: translateY(-44px);
   }
@@ -1105,6 +1105,25 @@ body {
     line-height: 1.16;
     min-height: 0;
     display: block;
+  }
+}
+
+@media (max-width: 980px) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .scene-root {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    min-height: 100dvh;
+    height: 100dvh;
+    overflow: hidden;
   }
 }
 
