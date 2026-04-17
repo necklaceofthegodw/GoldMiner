@@ -456,17 +456,13 @@ function App() {
               const disabled = !item.affordable || item.isMaxed;
               return (
                 <article key={item.id} className="shop-item-card">
-                  <div className="shop-item-main">
-                    <div className="shop-item-title">
-                      {item.shopIcon ? <img src={item.shopIcon} alt="" className="shop-item-icon" loading="lazy" /> : null}
-                      <div className="shop-item-copy">
-                        <div className="shop-item-heading">
-                          <h3>{item.name}</h3>
-                          <span className="shop-item-level">{levelLabel}</span>
-                        </div>
-                        <p>{item.description}</p>
-                      </div>
+                  {item.shopIcon ? <img src={item.shopIcon} alt="" className="shop-item-icon" loading="lazy" /> : null}
+                  <div className="shop-item-copy">
+                    <div className="shop-item-heading">
+                      <h3>{item.name}</h3>
+                      <span className="shop-item-level">{levelLabel}</span>
                     </div>
+                    <p>{item.description}</p>
                   </div>
                   <button
                     type="button"
