@@ -1121,7 +1121,26 @@ body {
 }
 
 @media (max-width: 980px) and (orientation: landscape) {
+  .shop-screen {
+    padding: 0.68rem 0.66rem 0.74rem;
+    row-gap: 0.18rem;
+  }
+
+  .shop-header {
+    margin-bottom: 0.1rem;
+  }
+
+  .speech {
+    margin-top: 0.56rem;
+    padding: 0.5rem 0.62rem;
+  }
+
+  .wallet {
+    margin: 0.6rem 0 0.4rem;
+  }
+
   .shop-list {
+    margin-top: 0.1rem;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: repeat(2, minmax(0, 1fr));
     gap: 0.48rem;
@@ -1155,7 +1174,7 @@ body {
   .shop-item-copy {
     gap: 0.34rem;
     align-content: start;
-    padding-right: 4.25rem;
+    padding-right: 0;
   }
 
   .shop-item-heading {
@@ -1167,8 +1186,12 @@ body {
   }
 
   .shop-item-level {
+    position: static;
+    right: auto;
+    top: auto;
+    margin-left: auto;
+    line-height: 1;
     font-size: 0.72rem;
-    top: 0;
   }
 
   .shop-item-copy p {
@@ -1189,7 +1212,22 @@ body {
 }
 
 @media (max-width: 980px) and (orientation: landscape) and (max-height: 520px) {
+  .shop-screen {
+    padding: 0.56rem;
+    row-gap: 0.1rem;
+  }
+
+  .speech {
+    margin-top: 0.34rem;
+    padding: 0.4rem 0.48rem;
+  }
+
+  .wallet {
+    margin: 0.32rem 0 0.24rem;
+  }
+
   .shop-list {
+    margin-top: 0;
     grid-template-rows: repeat(2, auto);
     gap: 0.36rem;
     align-content: start;
@@ -1212,7 +1250,7 @@ body {
 
   .shop-item-copy {
     gap: 0.2rem;
-    padding-right: 3.65rem;
+    padding-right: 0;
   }
 
   .shop-item-heading h3 {
@@ -1220,13 +1258,18 @@ body {
   }
 
   .shop-item-level {
+    position: static;
+    right: auto;
+    top: auto;
+    margin-left: auto;
+    line-height: 1;
     font-size: 0.6rem;
   }
 
   .shop-item-copy p {
     font-size: 0.6rem;
     line-height: 1.12;
-    -webkit-line-clamp: 1;
+    -webkit-line-clamp: 2;
   }
 
   .action-btn--buy-side {
