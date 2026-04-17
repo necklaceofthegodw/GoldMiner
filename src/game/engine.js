@@ -8,6 +8,7 @@ const HUD_PANEL_Y = 10;
 const HUD_PANEL_HEIGHT = 80;
 const HOOK_ORIGIN_Y = 82;
 const HOOK_END_ANGLE = 1.12 + (10 * Math.PI) / 180;
+const HOOK_MAX_LENGTH = Math.hypot(GAME_WIDTH / 2 - 8, GAME_HEIGHT - 8 - HOOK_ORIGIN_Y) + 12;
 const HUD_MONEY_TARGET_X = 136;
 const HUD_MONEY_TARGET_Y = 44;
 
@@ -156,7 +157,7 @@ function createHook(upgrades = DEFAULT_UPGRADES) {
     state: "swing",
     extendSpeed: 380,
     retractSpeed: 440 * (1 + upgrades.turboWinch * 0.12),
-    maxLength: GAME_HEIGHT + 40,
+    maxLength: HOOK_MAX_LENGTH,
     hitRadius: 8 + upgrades.precisionClaw * 1.4,
     targetId: null,
   };
