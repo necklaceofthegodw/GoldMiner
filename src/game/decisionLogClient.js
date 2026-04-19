@@ -1,9 +1,13 @@
 const DECISION_LOG_ENDPOINT = "/api/decision-log";
 const MAX_PENDING_ENTRIES = 10000;
+const MAX_BATCH_SIZE = 1000;
+const FLUSH_DEBOUNCE_MS = 1200;
+const IMMEDIATE_FLUSH_THRESHOLD = 2000;
 
 let pendingEntries = [];
 let isFlushing = false;
 let retryTimer = 0;
+let scheduledFlushTimer = 0;
 let activeNick = "";
 let activeSessionId = "";
 
@@ -41,11 +45,24 @@ function scheduleRetry() {
   }, 1500);
 }
 
+function scheduleFlush(delayMs = FLUSH_DEBOUNCE_MS) {
+  if (scheduledFlushTimer) return;
+  scheduledFlushTimer = globalThis.setTimeout(() => {
+    scheduledFlushTimer = 0;
+    void flushDecisionLog();
+  }, Math.max(0, Math.round(delayMs)));
+}
+
 async function flushDecisionLog() {
   if (isFlushing || pendingEntries.length === 0) return;
   isFlushing = true;
 
-  const batch = pendingEntries.slice(0, 200);
+  if (scheduledFlushTimer) {
+    globalThis.clearTimeout(scheduledFlushTimer);
+    scheduledFlushTimer = 0;
+  }
+
+  const batch = pendingEntries.slice(0, MAX_BATCH_SIZE);
   try {
     const response = await fetch(DECISION_LOG_ENDPOINT, {
       method: "POST",
@@ -83,7 +100,12 @@ export function appendDecisionEntries(entries) {
     pendingEntries = pendingEntries.slice(-MAX_PENDING_ENTRIES);
   }
 
-  void flushDecisionLog();
+  if (pendingEntries.length >= IMMEDIATE_FLUSH_THRESHOLD) {
+    void flushDecisionLog();
+    return;
+  }
+
+  scheduleFlush();
 }
 
 export function startDecisionSession(nick) {
@@ -102,5 +124,5 @@ export function startDecisionSession(nick) {
     pendingEntries = pendingEntries.slice(-MAX_PENDING_ENTRIES);
   }
 
-  void flushDecisionLog();
+  scheduleFlush();
 }

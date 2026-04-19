@@ -1,5 +1,10 @@
 import { del } from "@vercel/blob";
-import { findChunkPathnamesForNick, listAllChunkPathnames } from "./_decision-log-blob.js";
+import {
+  findChunkPathnamesForNick,
+  listAllChunkPathnames,
+  rebuildUsersIndex,
+  writeUsersIndex,
+} from "./_decision-log-blob.js";
 import { normalizeNick } from "./_decision-log.js";
 
 async function readRawBody(req) {
@@ -76,6 +81,7 @@ export default async function handler(req, res) {
     if (action === "all") {
       const pathnames = await listAllChunkPathnames();
       if (pathnames.length > 0) await del(pathnames);
+      await writeUsersIndex({ version: 1, updatedAt: new Date().toISOString(), users: {} });
       redirectToView(res, `msg=deleted_all&count=${pathnames.length}`);
       return;
     }
@@ -89,6 +95,7 @@ export default async function handler(req, res) {
 
       const pathnames = await findChunkPathnamesForNick(safeNick);
       if (pathnames.length > 0) await del(pathnames);
+      await rebuildUsersIndex();
       redirectToView(
         res,
         `msg=deleted_user&nick=${encodeURIComponent(safeNick)}&count=${pathnames.length}`

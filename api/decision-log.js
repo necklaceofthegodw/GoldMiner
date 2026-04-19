@@ -1,6 +1,7 @@
 import { put } from "@vercel/blob";
 import { randomUUID } from "node:crypto";
 import { LOG_CHUNK_PREFIX, normalizeIncomingEntries, parseEntriesFromRequest } from "./_decision-log.js";
+import { upsertUsersIndexForChunk } from "./_decision-log-blob.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -36,6 +37,7 @@ export default async function handler(req, res) {
       addRandomSuffix: false,
       contentType: "application/json; charset=utf-8",
     });
+    await upsertUsersIndexForChunk(pathname, normalizedEntries);
 
     res.statusCode = 204;
     res.end();

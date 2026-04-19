@@ -1,5 +1,5 @@
 import { USER_LOG_CSV_HEADER, buildUserDecisionRows } from "./_decision-log.js";
-import { readAllEntries } from "./_decision-log-blob.js";
+import { readEntriesForNick } from "./_decision-log-blob.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
       return;
     }
 
-    const entries = await readAllEntries();
+    const entries = await readEntriesForNick(nick);
     const rows = buildUserDecisionRows(entries, nick);
     const csvRows = rows.map((row) => `${row.seconds},${row.decision},${row.sessionId}`);
     const csvBody = `${USER_LOG_CSV_HEADER}${csvRows.length > 0 ? `${csvRows.join("\n")}\n` : ""}`;

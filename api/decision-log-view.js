@@ -1,5 +1,5 @@
-import { buildUserDecisionRows, buildUsersSummary } from "./_decision-log.js";
-import { readAllEntries } from "./_decision-log-blob.js";
+import { buildUserDecisionRows } from "./_decision-log.js";
+import { readEntriesForNick, readUsersSummaryFromIndex } from "./_decision-log-blob.js";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -8,6 +8,21 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function parsePositiveInt(value, fallback) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
+function buildPaging(total, queryPage, queryLimit, maxLimit) {
+  const page = parsePositiveInt(queryPage, 1);
+  const limit = Math.min(maxLimit, parsePositiveInt(queryLimit, 200));
+  const totalPages = total === 0 ? 1 : Math.ceil(total / limit);
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * limit;
+  return { page: safePage, limit, totalPages, start };
 }
 
 function renderMessage(query) {
@@ -26,7 +41,19 @@ function renderMessage(query) {
   return "";
 }
 
-function renderUsersList(users, query) {
+function renderUsersPager(page, totalPages, limit) {
+  const prevPage = Math.max(1, page - 1);
+  const nextPage = Math.min(totalPages, page + 1);
+  return `<div class="pager">
+    <span>Strona ${page} / ${totalPages}</span>
+    <div class="pager-links">
+      <a href="/api/decision-log-view?page=${prevPage}&limit=${limit}">Poprzednia</a>
+      <a href="/api/decision-log-view?page=${nextPage}&limit=${limit}">Nastepna</a>
+    </div>
+  </div>`;
+}
+
+function renderUsersList(users, query, paging) {
   const rows =
     users.length === 0
       ? '<tr><td colspan="6">Brak danych.</td></tr>'
@@ -37,7 +64,7 @@ function renderUsersList(users, query) {
       <td>${user.totalDecisions}</td>
       <td>${user.ones}</td>
       <td>${user.zeros}</td>
-      <td>${user.sessions}</td>
+      <td>${Array.isArray(user.sessions) ? user.sessions.length : Number(user.sessions) || 0}</td>
       <td>
         <form method="POST" action="/api/decision-log-delete" onsubmit="return confirm('Usunac logi gracza ${escapeHtml(user.nick)}?');">
           <input type="hidden" name="action" value="user" />
@@ -50,6 +77,7 @@ function renderUsersList(users, query) {
           .join("");
 
   const message = renderMessage(query);
+  const pager = renderUsersPager(paging.page, paging.totalPages, paging.limit);
 
   return `<!doctype html>
 <html lang="pl">
@@ -69,6 +97,8 @@ function renderUsersList(users, query) {
       .btn { border: 0; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-weight: 700; }
       .btn-danger { background: #b52a2a; color: #fff; }
       .btn-danger:hover { filter: brightness(1.06); }
+      .pager { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; }
+      .pager-links { display: flex; gap: 10px; }
       .ok { background: #e6f7e8; border: 1px solid #9ed0a3; padding: 8px 10px; border-radius: 8px; }
       .err { background: #fde9e9; border: 1px solid #e0a8a8; padding: 8px 10px; border-radius: 8px; }
     </style>
@@ -77,13 +107,14 @@ function renderUsersList(users, query) {
     <h1>Logi graczy</h1>
     <div class="toolbar">
       <a href="/api/decision-log-csv">Pobierz caly CSV</a>
-      <a href="/api/decision-users">JSON users</a>
+      <a href="/api/decision-users?page=${paging.page}&limit=${paging.limit}">JSON users</a>
       <form method="POST" action="/api/decision-log-delete" onsubmit="return confirm('Na pewno usunac wszystkie logi?');">
         <input type="hidden" name="action" value="all" />
         <button type="submit" class="btn btn-danger">Usun wszystko</button>
       </form>
     </div>
     ${message}
+    ${pager}
     <table>
       <thead>
         <tr>
@@ -97,6 +128,7 @@ function renderUsersList(users, query) {
       </thead>
       <tbody>${rows}</tbody>
     </table>
+    ${pager}
   </body>
 </html>`;
 }
@@ -173,7 +205,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    const entries = await readAllEntries();
     const nick = typeof req.query?.nick === "string" ? req.query.nick : "";
 
     res.statusCode = 200;
@@ -181,13 +212,16 @@ export default async function handler(req, res) {
     res.setHeader("Cache-Control", "no-store");
 
     if (nick.trim()) {
+      const entries = await readEntriesForNick(nick);
       const rows = buildUserDecisionRows(entries, nick);
       res.end(renderUserLog(nick, rows, req.query));
       return;
     }
 
-    const users = buildUsersSummary(entries);
-    res.end(renderUsersList(users, req.query));
+    const users = await readUsersSummaryFromIndex();
+    const paging = buildPaging(users.length, req.query?.page, req.query?.limit, 500);
+    const pagedUsers = users.slice(paging.start, paging.start + paging.limit);
+    res.end(renderUsersList(pagedUsers, req.query, paging));
   } catch {
     res.statusCode = 500;
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
