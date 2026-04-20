@@ -196,6 +196,66 @@ function renderUserLog(nick, rows, query) {
 </html>`;
 }
 
+function classifyReadError(error) {
+  const rawMessage = String(error?.message || "").trim();
+  const message = rawMessage || "Unknown error";
+  const isTokenMissing =
+    message.includes("No token found") || message.includes("BLOB_READ_WRITE_TOKEN");
+
+  if (isTokenMissing) {
+    return {
+      statusCode: 503,
+      title: "Brak konfiguracji Vercel Blob",
+      hint: [
+        "Ustaw zmienna srodowiskowa BLOB_READ_WRITE_TOKEN w projekcie na Vercelu (Production i Preview).",
+        "Po zapisaniu zmiennej wykonaj nowy deploy.",
+      ],
+      details: message,
+    };
+  }
+
+  return {
+    statusCode: 500,
+    title: "Nie udalo sie odczytac logow",
+    hint: ["Sprawdz konfiguracje Vercel Blob i logi funkcji serverless."],
+    details: message,
+  };
+}
+
+function renderErrorPage(info) {
+  const hints = info.hint
+    .map((item) => `<li>${escapeHtml(item)}</li>`)
+    .join("");
+
+  return `<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gold Miner - Blad logow</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; color: #111; background: #faf7ef; }
+      .card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 16px; max-width: 760px; }
+      h1 { margin: 0 0 10px; font-size: 22px; }
+      ul { margin: 10px 0 0 20px; }
+      code { background: #f2f2f2; padding: 1px 6px; border-radius: 6px; }
+      .details { margin-top: 12px; color: #666; font-size: 14px; }
+      a { color: #0b61a4; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>${escapeHtml(info.title)}</h1>
+      <p>Widok logow nie moze teraz pobrac danych.</p>
+      <ul>${hints}</ul>
+      <p class="details">Szczegoly: <code>${escapeHtml(info.details)}</code></p>
+      <p><a href="/api/decision-log-view">Sprobuj ponownie</a></p>
+    </div>
+  </body>
+</html>`;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     res.statusCode = 405;
@@ -222,9 +282,11 @@ export default async function handler(req, res) {
     const paging = buildPaging(users.length, req.query?.page, req.query?.limit, 500);
     const pagedUsers = users.slice(paging.start, paging.start + paging.limit);
     res.end(renderUsersList(pagedUsers, req.query, paging));
-  } catch {
-    res.statusCode = 500;
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.end("Nie udalo sie odczytac logow.");
+  } catch (error) {
+    const info = classifyReadError(error);
+    res.statusCode = info.statusCode;
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    res.end(renderErrorPage(info));
   }
 }
