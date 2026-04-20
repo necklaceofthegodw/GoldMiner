@@ -2,4 +2,4 @@ gold miner:
 https://gold-miner-t185.vercel.app/
 
 sprawdzanie logow gold miner:
-https://gold-miner-t185.vercel.app/api/decision-log-view
+https://gold-miner-t185.vercel.app/api/decision-log-view?key=<DECISION_LOG_ADMIN_KEY>

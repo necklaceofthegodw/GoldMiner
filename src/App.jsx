@@ -17,7 +17,13 @@ import {
   startLevel,
   updateEngine,
 } from "./game/engine";
-import { appendDecisionEntries, startDecisionSession } from "./game/decisionLogClient";
+import {
+  appendDecisionEntries,
+  exportLocalDecisionCsv,
+  finalizeDecisionSession,
+  getLocalDecisionExportCount,
+  startDecisionSession,
+} from "./game/decisionLogClient";
 import { GAME_ICON_SOURCES } from "./game/iconSources";
 import { loadGameSave, saveGameSave } from "./game/storage";
 
@@ -95,6 +101,9 @@ function App() {
         const oldPhase = previousPhase;
         previousPhase = engine.phase;
         saveGameSave(getSaveData(engine));
+        if (engine.phase === "level-failed" || engine.phase === "run-complete") {
+          finalizeDecisionSession(getSnapshot(engine), engine.phase);
+        }
 
         if (oldPhase === "playing" && engine.phase === "shop") {
           setShowLevelSummary(true);
@@ -283,6 +292,11 @@ function App() {
   const isComplete = hasEnteredGame && snapshot.phase === "run-complete";
   const binaryTotal = snapshot.oneDecisions + snapshot.zeroDecisions;
   const canStartGame = playerNick.trim().length > 0;
+  const localDecisionExportCount = getLocalDecisionExportCount();
+
+  const handleLocalCsvExport = useCallback(() => {
+    exportLocalDecisionCsv();
+  }, []);
 
   return (
     <div className={`scene-root${isPortraitMobile ? " scene-root--portrait" : ""}`}>
@@ -372,6 +386,17 @@ function App() {
           </div>
 
           <p className="control-hint">{controlHint}</p>
+          <div className="local-log-tools">
+            <button
+              type="button"
+              className="action-btn action-btn--gold local-export-btn"
+              disabled={localDecisionExportCount === 0}
+              onClick={handleLocalCsvExport}
+            >
+              Export local detailed CSV ({localDecisionExportCount})
+            </button>
+            <p className="local-log-note">Cloud stores only aggregated run summaries.</p>
+          </div>
 
           <div className="start-rule-strip">
             <article className="start-rule-card">
@@ -442,9 +467,19 @@ function App() {
         <section className="scene-panel shop-screen">
           <header className="shop-header">
             <h2>Gold Miner Shop</h2>
-            <button type="button" className="action-btn action-btn--green" onClick={handleNextLevel}>
-              Next Level
-            </button>
+            <div className="shop-header-actions">
+              <button
+                type="button"
+                className="action-btn action-btn--gold"
+                disabled={localDecisionExportCount === 0}
+                onClick={handleLocalCsvExport}
+              >
+                Export CSV
+              </button>
+              <button type="button" className="action-btn action-btn--green" onClick={handleNextLevel}>
+                Next Level
+              </button>
+            </div>
           </header>
           <p className="speech">
             Click the items you want to buy. When you are ready, move to the next level.
@@ -504,6 +539,14 @@ function App() {
           <button type="button" className="action-btn action-btn--gold" onClick={startNewRun}>
             Start Over
           </button>
+          <button
+            type="button"
+            className="action-btn action-btn--gold"
+            disabled={localDecisionExportCount === 0}
+            onClick={handleLocalCsvExport}
+          >
+            Export local detailed CSV ({localDecisionExportCount})
+          </button>
         </section>
       ) : null}
 
@@ -531,6 +574,14 @@ function App() {
           </div>
           <button type="button" className="action-btn action-btn--gold" onClick={startNewRun}>
             Play Again
+          </button>
+          <button
+            type="button"
+            className="action-btn action-btn--gold"
+            disabled={localDecisionExportCount === 0}
+            onClick={handleLocalCsvExport}
+          >
+            Export local detailed CSV ({localDecisionExportCount})
           </button>
         </section>
       ) : null}

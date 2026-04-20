@@ -47,22 +47,22 @@ npm run preview
 
 ## Decision CSV Log
 
-- Local (`npm run dev` / `npm run preview`): events are appended to `logs/decisions.csv` in this project.
-- CSV format: `czas_zdarzenia_s,decyzja` (seconds with one decimal, e.g. `10.7`)
-- At the beginning of each new game, nick is logged first as: `nick,<player_nick>`.
+- Full decision detail is stored locally on device and can be exported from the game UI as CSV.
+- Cloud logging stores only aggregated run summaries (one write per finished run).
 
 ### Vercel (phone app) log access
 
 1. In Vercel project settings, add environment variable `BLOB_READ_WRITE_TOKEN`.
-2. Deploy the project.
-3. Open `https://<your-domain>/api/decision-log-view` for simple browser view:
-   - list of users
-   - click a nick to see only that user's decisions
-   - delete one user's logs or delete all logs directly from the page
-4. Optional endpoints:
-   - `https://<your-domain>/api/decision-log-csv` (full CSV)
-   - `https://<your-domain>/api/decision-users` (JSON user summary)
-   - `https://<your-domain>/api/decision-user-log?nick=<nick>` (single user CSV)
+2. Add `DECISION_LOG_ADMIN_KEY` to protect admin endpoints.
+3. Deploy the project.
+4. Open `https://<your-domain>/api/decision-log-view?key=<DECISION_LOG_ADMIN_KEY>`:
+   - users summary (runs, wins/fails, aggregated decisions)
+   - click a nick to view this player's run summaries
+   - delete one user's summaries or all summaries
+5. Optional endpoints:
+   - `https://<your-domain>/api/decision-log-csv?key=<key>` (cloud CSV of run summaries)
+   - `https://<your-domain>/api/decision-users?page=1&limit=200&key=<key>` (JSON user summary)
+   - `https://<your-domain>/api/decision-user-log?nick=<nick>&key=<key>` (single user run-summary CSV)
 
 ## PWA Notes
 

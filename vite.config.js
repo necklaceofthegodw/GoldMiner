@@ -4,8 +4,11 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 const CSV_LOG_DIRECTORY = "logs";
-const CSV_LOG_FILENAME = "decisions.csv";
-const CSV_HEADER = "czas_zdarzenia_s,decyzja\n";
+const DECISION_CSV_LOG_FILENAME = "decisions.csv";
+const RUN_SUMMARY_CSV_LOG_FILENAME = "run-summaries.csv";
+const DECISION_CSV_HEADER = "czas_zdarzenia_s,decyzja\n";
+const RUN_SUMMARY_CSV_HEADER =
+  "nick,session_id,started_at,finished_at,result,last_level,completed_levels,total_decisions,ones,zeros,total_earned,bank\n";
 
 function escapeCsv(value) {
   const text = String(value ?? "");
@@ -30,7 +33,8 @@ function readRequestBody(req) {
 
 function createDecisionLogMiddleware(rootPath) {
   const logDirectory = path.join(rootPath, CSV_LOG_DIRECTORY);
-  const logPath = path.join(logDirectory, CSV_LOG_FILENAME);
+  const decisionsLogPath = path.join(logDirectory, DECISION_CSV_LOG_FILENAME);
+  const summariesLogPath = path.join(logDirectory, RUN_SUMMARY_CSV_LOG_FILENAME);
 
   return async (req, res) => {
     if (req.method !== "POST") {
@@ -43,9 +47,41 @@ function createDecisionLogMiddleware(rootPath) {
     try {
       const rawBody = await readRequestBody(req);
       const payload = rawBody ? JSON.parse(rawBody) : {};
+      const runSummary =
+        payload?.runSummary && typeof payload.runSummary === "object" ? payload.runSummary : null;
       const entries = Array.isArray(payload?.entries) ? payload.entries : [];
 
-      if (entries.length === 0) {
+      if (!runSummary && entries.length === 0) {
+        res.statusCode = 204;
+        res.end();
+        return;
+      }
+
+      await fs.mkdir(logDirectory, { recursive: true });
+
+      if (runSummary) {
+        const row = [
+          escapeCsv(String(runSummary.nick ?? "").trim()),
+          escapeCsv(String(runSummary.sessionId ?? "").trim()),
+          escapeCsv(String(runSummary.startedAt ?? "").trim()),
+          escapeCsv(String(runSummary.finishedAt ?? "").trim()),
+          escapeCsv(runSummary.success ? "win" : "fail"),
+          Math.max(0, Number(runSummary.lastLevel) || 0),
+          Math.max(0, Number(runSummary.completedLevels) || 0),
+          Math.max(0, Number(runSummary.totalDecisions) || 0),
+          Math.max(0, Number(runSummary.ones) || 0),
+          Math.max(0, Number(runSummary.zeros) || 0),
+          Math.max(0, Number(runSummary.totalEarned) || 0),
+          Math.max(0, Number(runSummary.bank) || 0),
+        ].join(",");
+
+        try {
+          await fs.access(summariesLogPath);
+        } catch {
+          await fs.writeFile(summariesLogPath, RUN_SUMMARY_CSV_HEADER, "utf8");
+        }
+        await fs.appendFile(summariesLogPath, `${row}\n`, "utf8");
+
         res.statusCode = 204;
         res.end();
         return;
@@ -63,13 +99,12 @@ function createDecisionLogMiddleware(rootPath) {
         return `${elapsedSeconds},${decision}`;
       });
 
-      await fs.mkdir(logDirectory, { recursive: true });
       try {
-        await fs.access(logPath);
+        await fs.access(decisionsLogPath);
       } catch {
-        await fs.writeFile(logPath, CSV_HEADER, "utf8");
+        await fs.writeFile(decisionsLogPath, DECISION_CSV_HEADER, "utf8");
       }
-      await fs.appendFile(logPath, `${rows.join("\n")}\n`, "utf8");
+      await fs.appendFile(decisionsLogPath, `${rows.join("\n")}\n`, "utf8");
 
       res.statusCode = 204;
       res.end();
@@ -81,7 +116,7 @@ function createDecisionLogMiddleware(rootPath) {
 }
 
 function createDecisionLogCsvReadMiddleware(rootPath) {
-  const logPath = path.join(rootPath, CSV_LOG_DIRECTORY, CSV_LOG_FILENAME);
+  const logPath = path.join(rootPath, CSV_LOG_DIRECTORY, RUN_SUMMARY_CSV_LOG_FILENAME);
 
   return async (req, res) => {
     if (req.method !== "GET") {
@@ -96,7 +131,7 @@ function createDecisionLogCsvReadMiddleware(rootPath) {
       try {
         csvText = await fs.readFile(logPath, "utf8");
       } catch {
-        csvText = CSV_HEADER;
+        csvText = RUN_SUMMARY_CSV_HEADER;
       }
 
       res.statusCode = 200;

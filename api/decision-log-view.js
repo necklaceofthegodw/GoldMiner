@@ -1,5 +1,9 @@
-import { buildUserDecisionRows } from "./_decision-log.js";
-import { readEntriesForNick, readUsersSummaryFromIndex } from "./_decision-log-blob.js";
+import {
+  readAdminKeyFromRequest,
+  requireDecisionLogAdminAuth,
+} from "./_decision-log-admin-auth.js";
+import { normalizeNick, summarizeUsersFromRuns } from "./_decision-log.js";
+import { readAllRunSummaries, readRunSummariesForNick } from "./_decision-log-blob.js";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -25,15 +29,25 @@ function buildPaging(total, queryPage, queryLimit, maxLimit) {
   return { page: safePage, limit, totalPages, start };
 }
 
+function withQuery(pathname, values = {}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) {
+    if (value === null || value === undefined || value === "") continue;
+    params.set(key, String(value));
+  }
+  const query = params.toString();
+  return `${pathname}${query ? `?${query}` : ""}`;
+}
+
 function renderMessage(query) {
   const msg = typeof query?.msg === "string" ? query.msg : "";
   const count = Number(query?.count) || 0;
   const nick = typeof query?.nick === "string" ? query.nick : "";
 
   if (!msg) return "";
-  if (msg === "deleted_all") return `<p class="ok">Usunieto wszystkie logi. Chunks: ${count}.</p>`;
+  if (msg === "deleted_all") return `<p class="ok">Usunieto wszystkie podsumowania runow. Blobs: ${count}.</p>`;
   if (msg === "deleted_user") {
-    return `<p class="ok">Usunieto logi gracza <strong>${escapeHtml(nick)}</strong>. Chunks: ${count}.</p>`;
+    return `<p class="ok">Usunieto podsumowania gracza <strong>${escapeHtml(nick)}</strong>. Blobs: ${count}.</p>`;
   }
   if (msg === "nick_required") return '<p class="err">Brak nicku do usuniecia.</p>';
   if (msg === "invalid_action") return '<p class="err">Niepoprawna akcja usuwania.</p>';
@@ -41,50 +55,62 @@ function renderMessage(query) {
   return "";
 }
 
-function renderUsersPager(page, totalPages, limit) {
+function renderUsersPager(page, totalPages, limit, adminKey) {
   const prevPage = Math.max(1, page - 1);
   const nextPage = Math.min(totalPages, page + 1);
+  const prevHref = withQuery("/api/decision-log-view", { page: prevPage, limit, key: adminKey });
+  const nextHref = withQuery("/api/decision-log-view", { page: nextPage, limit, key: adminKey });
   return `<div class="pager">
     <span>Strona ${page} / ${totalPages}</span>
     <div class="pager-links">
-      <a href="/api/decision-log-view?page=${prevPage}&limit=${limit}">Poprzednia</a>
-      <a href="/api/decision-log-view?page=${nextPage}&limit=${limit}">Nastepna</a>
+      <a href="${prevHref}">Poprzednia</a>
+      <a href="${nextHref}">Nastepna</a>
     </div>
   </div>`;
 }
 
-function renderUsersList(users, query, paging) {
+function renderUsersList(users, query, paging, adminKey) {
   const rows =
     users.length === 0
-      ? '<tr><td colspan="6">Brak danych.</td></tr>'
+      ? '<tr><td colspan="8">Brak danych.</td></tr>'
       : users
-          .map(
-            (user) => `<tr>
-      <td><a href="/api/decision-log-view?nick=${encodeURIComponent(user.nick)}">${escapeHtml(user.nick)}</a></td>
+          .map((user) => {
+            const userHref = withQuery("/api/decision-log-view", { nick: user.nick, key: adminKey });
+            return `<tr>
+      <td><a href="${userHref}">${escapeHtml(user.nick)}</a></td>
+      <td>${user.runs}</td>
+      <td>${user.wins}</td>
+      <td>${user.fails}</td>
       <td>${user.totalDecisions}</td>
       <td>${user.ones}</td>
       <td>${user.zeros}</td>
-      <td>${Array.isArray(user.sessions) ? user.sessions.length : Number(user.sessions) || 0}</td>
       <td>
-        <form method="POST" action="/api/decision-log-delete" onsubmit="return confirm('Usunac logi gracza ${escapeHtml(user.nick)}?');">
+        <form method="POST" action="${withQuery("/api/decision-log-delete", { key: adminKey })}" onsubmit="return confirm('Usunac podsumowania gracza ${escapeHtml(user.nick)}?');">
           <input type="hidden" name="action" value="user" />
           <input type="hidden" name="nick" value="${escapeHtml(user.nick)}" />
           <button type="submit" class="btn btn-danger">Usun</button>
         </form>
       </td>
-    </tr>`
-          )
+    </tr>`;
+          })
           .join("");
 
   const message = renderMessage(query);
-  const pager = renderUsersPager(paging.page, paging.totalPages, paging.limit);
+  const pager = renderUsersPager(paging.page, paging.totalPages, paging.limit, adminKey);
+  const csvHref = withQuery("/api/decision-log-csv", { key: adminKey });
+  const usersJsonHref = withQuery("/api/decision-users", {
+    page: paging.page,
+    limit: paging.limit,
+    key: adminKey,
+  });
+  const deleteAction = withQuery("/api/decision-log-delete", { key: adminKey });
 
   return `<!doctype html>
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gold Miner - Logi Graczy</title>
+    <title>Gold Miner - Podsumowania Runow</title>
     <style>
       body { font-family: Arial, sans-serif; margin: 20px; color: #111; background: #faf7ef; }
       h1 { margin: 0 0 12px; }
@@ -101,14 +127,16 @@ function renderUsersList(users, query, paging) {
       .pager-links { display: flex; gap: 10px; }
       .ok { background: #e6f7e8; border: 1px solid #9ed0a3; padding: 8px 10px; border-radius: 8px; }
       .err { background: #fde9e9; border: 1px solid #e0a8a8; padding: 8px 10px; border-radius: 8px; }
+      .note { background: #fffbe8; border: 1px solid #e8d89a; padding: 8px 10px; border-radius: 8px; margin-bottom: 12px; }
     </style>
   </head>
   <body>
-    <h1>Logi graczy</h1>
+    <h1>Podsumowania runow</h1>
+    <p class="note">Pelny detal pojedynczych decyzji jest eksportowany lokalnie z urzadzenia (CSV w grze). W chmurze trzymane sa tylko agregaty runow.</p>
     <div class="toolbar">
-      <a href="/api/decision-log-csv">Pobierz caly CSV</a>
-      <a href="/api/decision-users?page=${paging.page}&limit=${paging.limit}">JSON users</a>
-      <form method="POST" action="/api/decision-log-delete" onsubmit="return confirm('Na pewno usunac wszystkie logi?');">
+      <a href="${csvHref}">Pobierz CSV agregatow runow</a>
+      <a href="${usersJsonHref}">JSON users</a>
+      <form method="POST" action="${deleteAction}" onsubmit="return confirm('Na pewno usunac wszystkie podsumowania runow?');">
         <input type="hidden" name="action" value="all" />
         <button type="submit" class="btn btn-danger">Usun wszystko</button>
       </form>
@@ -119,10 +147,12 @@ function renderUsersList(users, query, paging) {
       <thead>
         <tr>
           <th>Nick</th>
+          <th>Runy</th>
+          <th>Wygrane</th>
+          <th>Przegrane</th>
           <th>Decyzje</th>
           <th>Jedynki</th>
           <th>Zera</th>
-          <th>Sesje</th>
           <th>Akcje</th>
         </tr>
       </thead>
@@ -133,28 +163,40 @@ function renderUsersList(users, query, paging) {
 </html>`;
 }
 
-function renderUserLog(nick, rows, query) {
-  const bodyRows =
-    rows.length === 0
-      ? '<tr><td colspan="3">Brak decyzji dla tego nicku.</td></tr>'
-      : rows
+function renderUserRuns(nick, summaries, query, adminKey) {
+  const rows =
+    summaries.length === 0
+      ? '<tr><td colspan="10">Brak runow dla tego nicku.</td></tr>'
+      : summaries
+          .slice()
+          .sort((a, b) => b.finishedAt.localeCompare(a.finishedAt))
           .map(
-            (row) => `<tr>
-      <td>${escapeHtml(row.seconds)}</td>
-      <td>${row.decision}</td>
-      <td>${escapeHtml(row.sessionId)}</td>
+            (summary) => `<tr>
+      <td>${escapeHtml(summary.finishedAt)}</td>
+      <td>${summary.success ? "win" : "fail"}</td>
+      <td>${summary.lastLevel}</td>
+      <td>${summary.completedLevels}</td>
+      <td>${summary.totalDecisions}</td>
+      <td>${summary.ones}</td>
+      <td>${summary.zeros}</td>
+      <td>${summary.totalEarned}</td>
+      <td>${summary.bank}</td>
+      <td>${escapeHtml(summary.sessionId)}</td>
     </tr>`
           )
           .join("");
 
   const message = renderMessage(query);
+  const backHref = withQuery("/api/decision-log-view", { key: adminKey });
+  const userCsvHref = withQuery("/api/decision-user-log", { nick, key: adminKey });
+  const deleteAction = withQuery("/api/decision-log-delete", { key: adminKey });
 
   return `<!doctype html>
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gold Miner - Log ${escapeHtml(nick)}</title>
+    <title>Gold Miner - Runy ${escapeHtml(nick)}</title>
     <style>
       body { font-family: Arial, sans-serif; margin: 20px; color: #111; background: #faf7ef; }
       h1 { margin: 0 0 12px; }
@@ -168,29 +210,38 @@ function renderUserLog(nick, rows, query) {
       .btn-danger { background: #b52a2a; color: #fff; }
       .ok { background: #e6f7e8; border: 1px solid #9ed0a3; padding: 8px 10px; border-radius: 8px; }
       .err { background: #fde9e9; border: 1px solid #e0a8a8; padding: 8px 10px; border-radius: 8px; }
+      .note { background: #fffbe8; border: 1px solid #e8d89a; padding: 8px 10px; border-radius: 8px; margin-bottom: 12px; }
     </style>
   </head>
   <body>
-    <p><a href="/api/decision-log-view">&larr; Wroc do listy graczy</a></p>
-    <h1>Log gracza: ${escapeHtml(nick)}</h1>
+    <p><a href="${backHref}">&larr; Wroc do listy graczy</a></p>
+    <h1>Runy gracza: ${escapeHtml(nick)}</h1>
+    <p class="note">To sa agregaty runow z chmury. Pelny detal decyzji eksportujesz lokalnie z urzadzenia gracza.</p>
     <div class="toolbar">
-      <a href="/api/decision-user-log?nick=${encodeURIComponent(nick)}">Pobierz CSV tego gracza</a>
-      <form method="POST" action="/api/decision-log-delete" onsubmit="return confirm('Usunac logi gracza ${escapeHtml(nick)}?');">
+      <a href="${userCsvHref}">Pobierz CSV runow tego gracza</a>
+      <form method="POST" action="${deleteAction}" onsubmit="return confirm('Usunac podsumowania runow gracza ${escapeHtml(nick)}?');">
         <input type="hidden" name="action" value="user" />
         <input type="hidden" name="nick" value="${escapeHtml(nick)}" />
-        <button type="submit" class="btn btn-danger">Usun logi tego gracza</button>
+        <button type="submit" class="btn btn-danger">Usun runy tego gracza</button>
       </form>
     </div>
     ${message}
     <table>
       <thead>
         <tr>
-          <th>Czas [s]</th>
-          <th>Decyzja</th>
+          <th>Zakonczenie</th>
+          <th>Wynik</th>
+          <th>Ostatni poziom</th>
+          <th>Ukonczone poziomy</th>
+          <th>Decyzje</th>
+          <th>Jedynki</th>
+          <th>Zera</th>
+          <th>Zarobek</th>
+          <th>Bank</th>
           <th>Session ID</th>
         </tr>
       </thead>
-      <tbody>${bodyRows}</tbody>
+      <tbody>${rows}</tbody>
     </table>
   </body>
 </html>`;
@@ -201,6 +252,7 @@ function classifyReadError(error) {
   const message = rawMessage || "Unknown error";
   const isTokenMissing =
     message.includes("No token found") || message.includes("BLOB_READ_WRITE_TOKEN");
+  const isForbidden = message.includes("403");
 
   if (isTokenMissing) {
     return {
@@ -209,6 +261,18 @@ function classifyReadError(error) {
       hint: [
         "Ustaw zmienna srodowiskowa BLOB_READ_WRITE_TOKEN w projekcie na Vercelu (Production i Preview).",
         "Po zapisaniu zmiennej wykonaj nowy deploy.",
+      ],
+      details: message,
+    };
+  }
+
+  if (isForbidden) {
+    return {
+      statusCode: 500,
+      title: "Brak dostepu do Blob Store",
+      hint: [
+        "Sprawdz czy BLOB_READ_WRITE_TOKEN pochodzi z tego samego Blob Store co projekt.",
+        "W razie watpliwosci wygeneruj nowy token i wykonaj redeploy.",
       ],
       details: message,
     };
@@ -223,9 +287,7 @@ function classifyReadError(error) {
 }
 
 function renderErrorPage(info) {
-  const hints = info.hint
-    .map((item) => `<li>${escapeHtml(item)}</li>`)
-    .join("");
+  const hints = info.hint.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
 
   return `<!doctype html>
 <html lang="pl">
@@ -240,8 +302,6 @@ function renderErrorPage(info) {
       ul { margin: 10px 0 0 20px; }
       code { background: #f2f2f2; padding: 1px 6px; border-radius: 6px; }
       .details { margin-top: 12px; color: #666; font-size: 14px; }
-      a { color: #0b61a4; text-decoration: none; }
-      a:hover { text-decoration: underline; }
     </style>
   </head>
   <body>
@@ -250,13 +310,14 @@ function renderErrorPage(info) {
       <p>Widok logow nie moze teraz pobrac danych.</p>
       <ul>${hints}</ul>
       <p class="details">Szczegoly: <code>${escapeHtml(info.details)}</code></p>
-      <p><a href="/api/decision-log-view">Sprobuj ponownie</a></p>
     </div>
   </body>
 </html>`;
 }
 
 export default async function handler(req, res) {
+  if (!requireDecisionLogAdminAuth(req, res, { html: true })) return;
+
   if (req.method !== "GET") {
     res.statusCode = 405;
     res.setHeader("Allow", "GET");
@@ -265,23 +326,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    const nick = typeof req.query?.nick === "string" ? req.query.nick : "";
+    const adminKey = readAdminKeyFromRequest(req);
+    const nick = normalizeNick(req.query?.nick);
 
     res.statusCode = 200;
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Cache-Control", "private, max-age=60");
 
-    if (nick.trim()) {
-      const entries = await readEntriesForNick(nick);
-      const rows = buildUserDecisionRows(entries, nick);
-      res.end(renderUserLog(nick, rows, req.query));
+    if (nick) {
+      const summaries = await readRunSummariesForNick(nick, { useCache: true });
+      res.end(renderUserRuns(nick, summaries, req.query, adminKey));
       return;
     }
 
-    const users = await readUsersSummaryFromIndex();
+    const summaries = await readAllRunSummaries({ useCache: true });
+    const users = summarizeUsersFromRuns(summaries);
     const paging = buildPaging(users.length, req.query?.page, req.query?.limit, 500);
     const pagedUsers = users.slice(paging.start, paging.start + paging.limit);
-    res.end(renderUsersList(pagedUsers, req.query, paging));
+    res.end(renderUsersList(pagedUsers, req.query, paging, adminKey));
   } catch (error) {
     const info = classifyReadError(error);
     res.statusCode = info.statusCode;

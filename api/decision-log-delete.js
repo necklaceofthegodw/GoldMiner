@@ -1,10 +1,10 @@
 import { del } from "@vercel/blob";
 import {
-  findChunkPathnamesForNick,
-  listAllChunkPathnames,
-  rebuildUsersIndex,
-  writeUsersIndex,
-} from "./_decision-log-blob.js";
+  readAdminKeyFromRequest,
+  requireDecisionLogAdminAuth,
+  withAdminKey,
+} from "./_decision-log-admin-auth.js";
+import { listAllRunSummaryPathnames, listRunSummaryPathnamesForNick } from "./_decision-log-blob.js";
 import { normalizeNick } from "./_decision-log.js";
 
 async function readRawBody(req) {
@@ -62,13 +62,16 @@ async function parseDeleteRequest(req) {
   }
 }
 
-function redirectToView(res, params = "") {
+function redirectToView(res, adminKey, params = "") {
+  const targetPath = `/api/decision-log-view${params ? `?${params}` : ""}`;
   res.statusCode = 303;
-  res.setHeader("Location", `/api/decision-log-view${params ? `?${params}` : ""}`);
+  res.setHeader("Location", withAdminKey(targetPath, adminKey));
   res.end();
 }
 
 export default async function handler(req, res) {
+  if (!requireDecisionLogAdminAuth(req, res)) return;
+
   if (req.method !== "POST") {
     res.statusCode = 405;
     res.setHeader("Allow", "POST");
@@ -77,34 +80,35 @@ export default async function handler(req, res) {
   }
 
   try {
+    const adminKey = readAdminKeyFromRequest(req);
     const { action, nick } = await parseDeleteRequest(req);
     if (action === "all") {
-      const pathnames = await listAllChunkPathnames();
+      const pathnames = await listAllRunSummaryPathnames();
       if (pathnames.length > 0) await del(pathnames);
-      await writeUsersIndex({ version: 1, updatedAt: new Date().toISOString(), users: {} });
-      redirectToView(res, `msg=deleted_all&count=${pathnames.length}`);
+      redirectToView(res, adminKey, `msg=deleted_all&count=${pathnames.length}`);
       return;
     }
 
     if (action === "user") {
       const safeNick = normalizeNick(nick);
       if (!safeNick) {
-        redirectToView(res, "msg=nick_required");
+        redirectToView(res, adminKey, "msg=nick_required");
         return;
       }
 
-      const pathnames = await findChunkPathnamesForNick(safeNick);
+      const pathnames = await listRunSummaryPathnamesForNick(safeNick);
       if (pathnames.length > 0) await del(pathnames);
-      await rebuildUsersIndex();
       redirectToView(
         res,
+        adminKey,
         `msg=deleted_user&nick=${encodeURIComponent(safeNick)}&count=${pathnames.length}`
       );
       return;
     }
 
-    redirectToView(res, "msg=invalid_action");
+    redirectToView(res, adminKey, "msg=invalid_action");
   } catch {
-    redirectToView(res, "msg=delete_failed");
+    const adminKey = readAdminKeyFromRequest(req);
+    redirectToView(res, adminKey, "msg=delete_failed");
   }
 }

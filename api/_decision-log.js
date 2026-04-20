@@ -1,6 +1,9 @@
-export const CSV_HEADER = "czas_zdarzenia_s,decyzja\n";
-export const USER_LOG_CSV_HEADER = "czas_zdarzenia_s,decyzja,session_id\n";
-export const LOG_CHUNK_PREFIX = "decision-logs/chunks/";
+export const RUN_SUMMARY_VERSION = 3;
+export const RUN_SUMMARY_PREFIX = "decision-logs/runs-v3/";
+export const RUN_SUMMARY_CSV_HEADER =
+  "nick,session_id,started_at,finished_at,result,last_level,completed_levels,total_decisions,ones,zeros,total_earned,bank\n";
+export const USER_RUN_CSV_HEADER =
+  "session_id,started_at,finished_at,result,last_level,completed_levels,total_decisions,ones,zeros,total_earned,bank\n";
 
 function escapeCsv(value) {
   const text = String(value ?? "");
@@ -17,16 +20,73 @@ export function normalizeNick(value) {
 function normalizeSessionId(value) {
   const sessionId = String(value ?? "").trim();
   if (!sessionId) return "";
-  return sessionId.slice(0, 80);
+  return sessionId.slice(0, 120);
 }
 
-function parseLegacyNick(raw) {
-  const value = String(raw ?? "").trim();
-  if (!value) return "";
-  if (value.startsWith('"') && value.endsWith('"') && value.length >= 2) {
-    return normalizeNick(value.slice(1, -1).replace(/""/g, '"'));
-  }
-  return normalizeNick(value);
+function normalizeIsoDate(value, fallback = "") {
+  const raw = String(value ?? "").trim();
+  if (!raw) return fallback;
+  const date = new Date(raw);
+  if (!Number.isFinite(date.getTime())) return fallback;
+  return date.toISOString();
+}
+
+function toNonNegativeInt(value, fallback = 0) {
+  return Math.max(0, Math.round(Number(value) || fallback));
+}
+
+function normalizeRunHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history
+    .map((entry) => ({
+      level: toNonNegativeInt(entry?.level),
+      goal: toNonNegativeInt(entry?.goal),
+      earned: toNonNegativeInt(entry?.earned),
+      reward: toNonNegativeInt(entry?.reward),
+      oneDecisions: toNonNegativeInt(entry?.oneDecisions),
+      zeroDecisions: toNonNegativeInt(entry?.zeroDecisions),
+      success: Boolean(entry?.success),
+    }))
+    .filter((entry) => entry.level > 0)
+    .sort((a, b) => a.level - b.level)
+    .slice(0, 32);
+}
+
+export function normalizeRunSummary(input) {
+  if (!input || typeof input !== "object") return null;
+
+  const nick = normalizeNick(input.nick);
+  const sessionId = normalizeSessionId(input.sessionId);
+  const finishedAt = normalizeIsoDate(input.finishedAt);
+  const startedAt = normalizeIsoDate(input.startedAt, finishedAt);
+  if (!nick || !sessionId || !finishedAt) return null;
+
+  const ones = toNonNegativeInt(input.ones);
+  const zeros = toNonNegativeInt(input.zeros);
+  const totalDecisions = Math.max(toNonNegativeInt(input.totalDecisions), ones + zeros);
+  const endedPhase = String(input.endedPhase || "").trim() === "run-complete" ? "run-complete" : "level-failed";
+  const success = input.success === undefined ? endedPhase === "run-complete" : Boolean(input.success);
+  const completedLevels = toNonNegativeInt(input.completedLevels);
+  const lastLevel = Math.max(1, toNonNegativeInt(input.lastLevel, 1));
+
+  return {
+    version: RUN_SUMMARY_VERSION,
+    kind: "run-summary",
+    nick,
+    sessionId,
+    startedAt,
+    finishedAt,
+    endedPhase,
+    success,
+    completedLevels,
+    lastLevel,
+    totalDecisions,
+    ones,
+    zeros,
+    totalEarned: toNonNegativeInt(input.totalEarned),
+    bank: toNonNegativeInt(input.bank),
+    history: normalizeRunHistory(input.history),
+  };
 }
 
 async function readRawBody(req) {
@@ -48,171 +108,127 @@ async function readRawBody(req) {
   });
 }
 
-export async function parseEntriesFromRequest(req) {
+export async function parseRunSummaryFromRequest(req) {
   const rawBody = await readRawBody(req);
   const payload = rawBody ? JSON.parse(rawBody) : {};
-  return Array.isArray(payload?.entries) ? payload.entries : [];
+  const rawSummary =
+    payload?.runSummary && typeof payload.runSummary === "object" ? payload.runSummary : payload;
+  return normalizeRunSummary(rawSummary);
 }
 
-export function normalizeIncomingEntries(entries) {
-  if (!Array.isArray(entries)) return [];
-
-  const normalized = [];
-  const fallbackLoggedAt = new Date().toISOString();
-  for (const entry of entries) {
-    const loggedAt = typeof entry?.loggedAt === "string" && entry.loggedAt ? entry.loggedAt : fallbackLoggedAt;
-    if (entry?.type === "nick") {
-      const nick = normalizeNick(entry.nick);
-      if (!nick) continue;
-      normalized.push({
-        type: "nick",
-        nick,
-        sessionId: normalizeSessionId(entry.sessionId),
-        loggedAt,
-      });
-      continue;
-    }
-
-    const elapsedMs = Math.max(0, Math.round(Number(entry?.elapsedMs) || 0));
-    const decision = Number(entry?.decision) === 1 ? 1 : 0;
-    normalized.push({
-      type: "decision",
-      elapsedMs,
-      decision,
-      nick: normalizeNick(entry?.nick),
-      sessionId: normalizeSessionId(entry?.sessionId),
-      loggedAt,
-    });
-  }
-
-  return normalized;
+export function toNickSlug(nick) {
+  const normalized = normalizeNick(nick)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || "anon";
 }
 
-export function toCsvRows(entries) {
-  if (!Array.isArray(entries)) return [];
-
-  const rows = [];
-  for (const entry of entries) {
-    if (entry?.type === "nick") {
-      const nick = normalizeNick(entry?.nick);
-      if (nick) rows.push(`nick,${escapeCsv(nick)}`);
-      continue;
-    }
-
-    if (entry?.type !== "decision") continue;
-    const elapsedMs = Math.max(0, Number(entry?.elapsedMs) || 0);
-    const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
-    const decision = Number(entry?.decision) === 1 ? 1 : 0;
-    rows.push(`${elapsedSeconds},${decision}`);
-  }
-
-  return rows;
+function toPathToken(value, fallback = "na") {
+  const token = String(value ?? "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return token || fallback;
 }
 
-export function parseLegacyCsvChunk(text) {
-  const lines = String(text ?? "").split(/\r?\n/);
-  const entries = [];
-  let activeNick = "";
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed === "czas_zdarzenia_s,decyzja" || trimmed === "czas_zdarzenia_ms,decyzja") {
-      continue;
-    }
-
-    if (trimmed.startsWith("nick,")) {
-      activeNick = parseLegacyNick(trimmed.slice(5));
-      entries.push({
-        type: "nick",
-        nick: activeNick,
-        sessionId: "",
-        loggedAt: null,
-      });
-      continue;
-    }
-
-    const match = trimmed.match(/^(-?\d+(?:\.\d+)?),([01])$/);
-    if (!match) continue;
-    const elapsedSeconds = Number(match[1]) || 0;
-    const elapsedMs = Math.max(0, Math.round(elapsedSeconds * 1000));
-    entries.push({
-      type: "decision",
-      elapsedMs,
-      decision: match[2] === "1" ? 1 : 0,
-      nick: activeNick,
-      sessionId: "",
-      loggedAt: null,
-    });
-  }
-  return entries;
+export function buildRunSummaryPathname(summary) {
+  const nickSlug = toNickSlug(summary?.nick);
+  const sessionToken = toPathToken(summary?.sessionId, "session");
+  const finishedToken = String(summary?.finishedAt || "")
+    .replace(/[^0-9]+/g, "")
+    .slice(0, 17);
+  return `${RUN_SUMMARY_PREFIX}${nickSlug}/${sessionToken}-${finishedToken || "ts"}.json`;
 }
 
-export function buildUsersSummary(entries) {
+export function toRunSummaryCsvRows(summaries) {
+  if (!Array.isArray(summaries)) return [];
+  return summaries.map((summary) =>
+    [
+      escapeCsv(summary.nick),
+      escapeCsv(summary.sessionId),
+      escapeCsv(summary.startedAt),
+      escapeCsv(summary.finishedAt),
+      escapeCsv(summary.success ? "win" : "fail"),
+      summary.lastLevel,
+      summary.completedLevels,
+      summary.totalDecisions,
+      summary.ones,
+      summary.zeros,
+      summary.totalEarned,
+      summary.bank,
+    ].join(",")
+  );
+}
+
+export function toUserRunCsvRows(summaries) {
+  if (!Array.isArray(summaries)) return [];
+  return summaries.map((summary) =>
+    [
+      escapeCsv(summary.sessionId),
+      escapeCsv(summary.startedAt),
+      escapeCsv(summary.finishedAt),
+      escapeCsv(summary.success ? "win" : "fail"),
+      summary.lastLevel,
+      summary.completedLevels,
+      summary.totalDecisions,
+      summary.ones,
+      summary.zeros,
+      summary.totalEarned,
+      summary.bank,
+    ].join(",")
+  );
+}
+
+export function summarizeUsersFromRuns(summaries) {
   const usersMap = new Map();
-  for (const entry of entries) {
-    const nick = normalizeNick(entry?.nick);
+  if (!Array.isArray(summaries)) return [];
+
+  for (const summary of summaries) {
+    const nick = normalizeNick(summary?.nick);
     if (!nick) continue;
 
-    const existing =
+    const user =
       usersMap.get(nick) ??
       {
         nick,
-        sessions: new Set(),
+        runs: 0,
+        wins: 0,
+        fails: 0,
         totalDecisions: 0,
         ones: 0,
         zeros: 0,
-        lastSeen: null,
+        lastSeen: "",
+        sessions: new Set(),
       };
 
-    const sessionId = normalizeSessionId(entry?.sessionId);
-    if (sessionId) existing.sessions.add(sessionId);
-    if (entry?.type === "decision") {
-      existing.totalDecisions += 1;
-      if (entry.decision === 1) existing.ones += 1;
-      if (entry.decision === 0) existing.zeros += 1;
+    user.runs += 1;
+    if (summary?.success) user.wins += 1;
+    if (!summary?.success) user.fails += 1;
+    user.totalDecisions += toNonNegativeInt(summary?.totalDecisions);
+    user.ones += toNonNegativeInt(summary?.ones);
+    user.zeros += toNonNegativeInt(summary?.zeros);
+    const finishedAt = normalizeIsoDate(summary?.finishedAt);
+    if (finishedAt && (!user.lastSeen || finishedAt > user.lastSeen)) {
+      user.lastSeen = finishedAt;
     }
+    const sessionId = normalizeSessionId(summary?.sessionId);
+    if (sessionId) user.sessions.add(sessionId);
 
-    const loggedAt = entry?.loggedAt ? String(entry.loggedAt) : null;
-    if (loggedAt && (!existing.lastSeen || loggedAt > existing.lastSeen)) {
-      existing.lastSeen = loggedAt;
-    }
-
-    usersMap.set(nick, existing);
+    usersMap.set(nick, user);
   }
 
   return [...usersMap.values()]
     .map((user) => ({
       nick: user.nick,
-      sessions: user.sessions.size,
+      runs: user.runs,
+      wins: user.wins,
+      fails: user.fails,
       totalDecisions: user.totalDecisions,
       ones: user.ones,
       zeros: user.zeros,
-      lastSeen: user.lastSeen,
+      sessions: user.sessions.size,
+      lastSeen: user.lastSeen || null,
     }))
     .sort((a, b) => b.totalDecisions - a.totalDecisions || a.nick.localeCompare(b.nick));
-}
-
-export function buildUserDecisionRows(entries, nick) {
-  const targetNick = normalizeNick(nick);
-  if (!targetNick) return [];
-
-  const rows = [];
-  for (const entry of entries) {
-    if (entry?.type !== "decision") continue;
-    if (normalizeNick(entry?.nick) !== targetNick) continue;
-    const elapsedMs = Math.max(0, Number(entry?.elapsedMs) || 0);
-    rows.push({
-      seconds: (elapsedMs / 1000).toFixed(1),
-      decision: entry.decision === 1 ? 1 : 0,
-      sessionId: normalizeSessionId(entry?.sessionId),
-      loggedAt: entry?.loggedAt ? String(entry.loggedAt) : "",
-    });
-  }
-
-  rows.sort((a, b) => {
-    const byLoggedAt = a.loggedAt.localeCompare(b.loggedAt);
-    if (byLoggedAt !== 0) return byLoggedAt;
-    return Number(a.seconds) - Number(b.seconds);
-  });
-
-  return rows;
 }

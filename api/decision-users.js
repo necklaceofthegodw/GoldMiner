@@ -1,4 +1,6 @@
-import { readUsersSummaryFromIndex } from "./_decision-log-blob.js";
+import { requireDecisionLogAdminAuth } from "./_decision-log-admin-auth.js";
+import { summarizeUsersFromRuns } from "./_decision-log.js";
+import { readAllRunSummaries } from "./_decision-log-blob.js";
 
 function parsePositiveInt(value, fallback) {
   const parsed = Number.parseInt(String(value ?? ""), 10);
@@ -7,6 +9,8 @@ function parsePositiveInt(value, fallback) {
 }
 
 export default async function handler(req, res) {
+  if (!requireDecisionLogAdminAuth(req, res)) return;
+
   if (req.method !== "GET") {
     res.statusCode = 405;
     res.setHeader("Allow", "GET");
@@ -15,7 +19,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const users = await readUsersSummaryFromIndex();
+    const summaries = await readAllRunSummaries({ useCache: true });
+    const users = summarizeUsersFromRuns(summaries);
     const page = parsePositiveInt(req.query?.page, 1);
     const limit = Math.min(500, parsePositiveInt(req.query?.limit, 200));
     const total = users.length;
@@ -26,12 +31,15 @@ export default async function handler(req, res) {
 
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Cache-Control", "private, max-age=60");
     res.end(
       JSON.stringify({
         users: pagedUsers.map((user) => ({
           nick: user.nick,
-          sessions: Array.isArray(user.sessions) ? user.sessions.length : Number(user.sessions) || 0,
+          sessions: Number(user.sessions) || 0,
+          runs: user.runs,
+          wins: user.wins,
+          fails: user.fails,
           totalDecisions: user.totalDecisions,
           ones: user.ones,
           zeros: user.zeros,
@@ -48,6 +56,6 @@ export default async function handler(req, res) {
   } catch {
     res.statusCode = 500;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify({ error: "Failed to read users list." }));
+    res.end(JSON.stringify({ error: "Failed to read users summary." }));
   }
 }
