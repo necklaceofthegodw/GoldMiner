@@ -2,9 +2,9 @@ import { normalizeNick, toNickSlug } from "./_decision-log.js";
 
 export const DECISION_CSV_PREFIX = "decision-logs/decisions-v1/";
 export const DECISION_CSV_HEADER = "timestamp,decyzja\n";
+const DECISION_CHUNK_DIRECTORY = "chunks";
 
 const MAX_CHUNK_ROWS = 3000;
-const MAX_PROCESSED_CHUNK_IDS = 4000;
 
 function toNonNegativeInt(value, fallback = 0) {
   return Math.max(0, Math.round(Number(value) || fallback));
@@ -25,6 +25,29 @@ function normalizeChunkId(value) {
   return chunkId.slice(0, 180);
 }
 
+function toPathToken(value, fallback = "na") {
+  const token = String(value ?? "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return token || fallback;
+}
+
+function parseChunkRange(chunkId) {
+  const text = normalizeChunkId(chunkId);
+  const match = text.match(/^(?<session>.+):(?<start>\d+)-(?<end>\d+)$/);
+  if (!match?.groups) return null;
+
+  const start = Number.parseInt(match.groups.start, 10);
+  const end = Number.parseInt(match.groups.end, 10);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end < start) return null;
+  return {
+    sessionId: normalizeSessionId(match.groups.session),
+    start,
+    end,
+  };
+}
+
 function normalizeChunkRows(rows) {
   if (!Array.isArray(rows)) return [];
   return rows
@@ -33,11 +56,6 @@ function normalizeChunkRows(rows) {
       elapsedMs: toNonNegativeInt(row?.elapsedMs),
       decision: Number(row?.decision) === 1 ? 1 : 0,
     }));
-}
-
-function normalizeChunkIdList(list) {
-  if (!Array.isArray(list)) return [];
-  return [...new Set(list.map(normalizeChunkId).filter(Boolean))].slice(-MAX_PROCESSED_CHUNK_IDS);
 }
 
 function ensureCsvHeader(text) {
@@ -62,8 +80,25 @@ export function buildDecisionCsvPath(nick) {
   return `${buildDecisionCsvBasePath(nick)}decisions.csv`;
 }
 
-export function buildDecisionStatePath(nick) {
-  return `${buildDecisionCsvBasePath(nick)}state.json`;
+export function buildDecisionChunksPrefix(nick) {
+  return `${buildDecisionCsvBasePath(nick)}${DECISION_CHUNK_DIRECTORY}/`;
+}
+
+export function buildDecisionChunkPath(nick, sessionId, chunkId) {
+  const safeNick = normalizeDecisionCsvNick(nick);
+  const safeSession = normalizeSessionId(sessionId);
+  const safeChunkId = normalizeChunkId(chunkId);
+  if (!safeNick || !safeSession || !safeChunkId) return "";
+
+  const range = parseChunkRange(safeChunkId);
+  const safeSessionToken = toPathToken(safeSession, "session");
+  if (!range) {
+    return `${buildDecisionChunksPrefix(safeNick)}${safeSessionToken}/${toPathToken(safeChunkId, "chunk")}.csv`;
+  }
+
+  const startToken = String(range.start).padStart(9, "0");
+  const endToken = String(range.end).padStart(9, "0");
+  return `${buildDecisionChunksPrefix(safeNick)}${safeSessionToken}/${startToken}-${endToken}.csv`;
 }
 
 export function normalizeDecisionChunkPayload(input) {
@@ -76,52 +111,6 @@ export function normalizeDecisionChunkPayload(input) {
   return { nick, sessionId, chunkId, rows };
 }
 
-export function parseDecisionState(rawState, nick) {
-  const fallback = {
-    version: 1,
-    nick: normalizeNick(nick),
-    processedChunkIds: [],
-  };
-
-  if (!rawState) return fallback;
-  try {
-    const parsed = JSON.parse(String(rawState));
-    return {
-      version: 1,
-      nick: normalizeNick(parsed?.nick || nick),
-      processedChunkIds: normalizeChunkIdList(parsed?.processedChunkIds),
-    };
-  } catch {
-    return fallback;
-  }
-}
-
-export function hasProcessedChunk(state, chunkId) {
-  const normalizedChunkId = normalizeChunkId(chunkId);
-  if (!normalizedChunkId) return false;
-  return Boolean(state?.processedChunkIds?.includes(normalizedChunkId));
-}
-
-export function withProcessedChunk(state, chunkId) {
-  const normalizedChunkId = normalizeChunkId(chunkId);
-  const normalizedNick = normalizeNick(state?.nick);
-  const current = normalizeChunkIdList(state?.processedChunkIds);
-  if (!normalizedChunkId) {
-    return {
-      version: 1,
-      nick: normalizedNick,
-      processedChunkIds: current,
-    };
-  }
-
-  const next = normalizeChunkIdList([...current, normalizedChunkId]);
-  return {
-    version: 1,
-    nick: normalizedNick,
-    processedChunkIds: next,
-  };
-}
-
 export function appendDecisionRowsToCsv(existingCsv, rows) {
   const normalizedRows = normalizeChunkRows(rows);
   const base = ensureCsvHeader(existingCsv);
@@ -129,4 +118,10 @@ export function appendDecisionRowsToCsv(existingCsv, rows) {
 
   const lines = normalizedRows.map((entry) => `${(entry.elapsedMs / 1000).toFixed(1)},${entry.decision}`);
   return `${base}${lines.join("\n")}\n`;
+}
+
+export function toDecisionChunkCsvBody(rows) {
+  const normalizedRows = normalizeChunkRows(rows);
+  if (normalizedRows.length === 0) return "";
+  return `${normalizedRows.map((entry) => `${(entry.elapsedMs / 1000).toFixed(1)},${entry.decision}`).join("\n")}\n`;
 }

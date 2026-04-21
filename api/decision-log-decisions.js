@@ -1,14 +1,9 @@
 import { put } from "@vercel/blob";
 import {
-  appendDecisionRowsToCsv,
-  buildDecisionCsvPath,
-  buildDecisionStatePath,
-  hasProcessedChunk,
+  buildDecisionChunkPath,
   normalizeDecisionChunkPayload,
-  parseDecisionState,
-  withProcessedChunk,
+  toDecisionChunkCsvBody,
 } from "./_decision-log-decisions.js";
-import { readBlobText } from "./_decision-log-blob.js";
 
 async function readRawBody(req) {
   if (typeof req.body === "string") return req.body;
@@ -61,30 +56,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    const csvPath = buildDecisionCsvPath(payload.nick);
-    const statePath = buildDecisionStatePath(payload.nick);
-
-    const rawState = await readBlobText(statePath, { useCache: false });
-    const state = parseDecisionState(rawState, payload.nick);
-    if (hasProcessedChunk(state, payload.chunkId)) {
-      res.statusCode = 204;
-      res.end();
+    const chunkPath = buildDecisionChunkPath(payload.nick, payload.sessionId, payload.chunkId);
+    const body = toDecisionChunkCsvBody(payload.rows);
+    if (!chunkPath || !body) {
+      res.statusCode = 400;
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.end(JSON.stringify({ error: "Invalid decision chunk payload." }));
       return;
     }
 
-    const currentCsv = await readBlobText(csvPath, { useCache: false });
-    const nextCsv = appendDecisionRowsToCsv(currentCsv, payload.rows);
-    const nextState = withProcessedChunk(state, payload.chunkId);
-
-    await put(csvPath, nextCsv, {
+    await put(chunkPath, body, {
       access: "private",
       addRandomSuffix: false,
-      contentType: "text/csv; charset=utf-8",
-    });
-    await put(statePath, JSON.stringify(nextState), {
-      access: "private",
-      addRandomSuffix: false,
-      contentType: "application/json; charset=utf-8",
+      contentType: "text/plain; charset=utf-8",
     });
 
     res.statusCode = 204;
