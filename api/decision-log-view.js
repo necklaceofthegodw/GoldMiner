@@ -45,14 +45,34 @@ function renderMessage(query) {
   const nick = typeof query?.nick === "string" ? query.nick : "";
 
   if (!msg) return "";
-  if (msg === "deleted_all") return `<p class="ok">Usunieto wszystkie podsumowania runow. Blobs: ${count}.</p>`;
+  if (msg === "deleted_all") {
+    return `<p class="ok" data-flash-message="1">Usunieto wszystkie podsumowania runow. Blobs: ${count}.</p>`;
+  }
   if (msg === "deleted_user") {
-    return `<p class="ok">Usunieto podsumowania gracza <strong>${escapeHtml(nick)}</strong>. Blobs: ${count}.</p>`;
+    return `<p class="ok" data-flash-message="1">Usunieto podsumowania gracza <strong>${escapeHtml(nick)}</strong>. Blobs: ${count}.</p>`;
   }
   if (msg === "nick_required") return '<p class="err">Brak nicku do usuniecia.</p>';
   if (msg === "invalid_action") return '<p class="err">Niepoprawna akcja usuwania.</p>';
   if (msg === "delete_failed") return '<p class="err">Nie udalo sie usunac logow.</p>';
   return "";
+}
+
+function renderFlashMessageScript(query) {
+  const msg = typeof query?.msg === "string" ? query.msg : "";
+  if (msg !== "deleted_all" && msg !== "deleted_user") return "";
+
+  return `<script>
+    window.setTimeout(function () {
+      var flash = document.querySelector("[data-flash-message='1']");
+      if (flash) flash.remove();
+      var url = new URL(window.location.href);
+      url.searchParams.delete("msg");
+      url.searchParams.delete("count");
+      url.searchParams.delete("nick");
+      var search = url.searchParams.toString();
+      window.history.replaceState({}, "", url.pathname + (search ? "?" + search : ""));
+    }, 2600);
+  </script>`;
 }
 
 function renderUsersPager(page, totalPages, limit, adminKey) {
@@ -103,6 +123,7 @@ function renderUsersList(users, query, paging, adminKey) {
           .join("");
 
   const message = renderMessage(query);
+  const flashScript = renderFlashMessageScript(query);
   const pager = renderUsersPager(paging.page, paging.totalPages, paging.limit, adminKey);
   const deleteAction = withQuery("/api/decision-log-delete", { key: adminKey });
 
@@ -134,7 +155,6 @@ function renderUsersList(users, query, paging, adminKey) {
   </head>
   <body>
     <h1>Gold Miner logs</h1>
-    <p class="note">W chmurze masz agregaty runow oraz CSV decyzji gracza (timestamp,decyzja).</p>
     <div class="toolbar">
       <form method="POST" action="${deleteAction}" onsubmit="return confirm('Na pewno usunac wszystkie podsumowania runow?');">
         <input type="hidden" name="action" value="all" />
@@ -158,6 +178,7 @@ function renderUsersList(users, query, paging, adminKey) {
       </thead>
       <tbody>${rows}</tbody>
     </table>
+    ${flashScript}
   </body>
 </html>`;
 }
@@ -186,6 +207,7 @@ function renderUserRuns(nick, summaries, query, adminKey) {
           .join("");
 
   const message = renderMessage(query);
+  const flashScript = renderFlashMessageScript(query);
   const backHref = withQuery("/api/decision-log-view", { key: adminKey });
   const userCsvHref = withQuery("/api/decision-user-log", { nick, key: adminKey });
   const userDecisionsCsvHref = withQuery("/api/decision-user-decisions-csv", { nick, key: adminKey });
@@ -244,6 +266,7 @@ function renderUserRuns(nick, summaries, query, adminKey) {
       </thead>
       <tbody>${rows}</tbody>
     </table>
+    ${flashScript}
   </body>
 </html>`;
 }
