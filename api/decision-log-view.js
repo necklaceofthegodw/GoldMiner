@@ -104,12 +104,6 @@ function renderUsersList(users, query, paging, adminKey) {
 
   const message = renderMessage(query);
   const pager = renderUsersPager(paging.page, paging.totalPages, paging.limit, adminKey);
-  const csvHref = withQuery("/api/decision-log-csv", { key: adminKey });
-  const usersJsonHref = withQuery("/api/decision-users", {
-    page: paging.page,
-    limit: paging.limit,
-    key: adminKey,
-  });
   const deleteAction = withQuery("/api/decision-log-delete", { key: adminKey });
 
   return `<!doctype html>
@@ -139,11 +133,9 @@ function renderUsersList(users, query, paging, adminKey) {
     </style>
   </head>
   <body>
-    <h1>Podsumowania runow</h1>
+    <h1>Gold Miner logs</h1>
     <p class="note">W chmurze masz agregaty runow oraz CSV decyzji gracza (timestamp,decyzja).</p>
     <div class="toolbar">
-      <a href="${csvHref}">Pobierz CSV agregatow runow</a>
-      <a href="${usersJsonHref}">JSON users</a>
       <form method="POST" action="${deleteAction}" onsubmit="return confirm('Na pewno usunac wszystkie podsumowania runow?');">
         <input type="hidden" name="action" value="all" />
         <button type="submit" class="btn btn-danger">Usun wszystko</button>
@@ -166,7 +158,6 @@ function renderUsersList(users, query, paging, adminKey) {
       </thead>
       <tbody>${rows}</tbody>
     </table>
-    ${pager}
   </body>
 </html>`;
 }
