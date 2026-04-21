@@ -4,7 +4,12 @@ import {
   requireDecisionLogAdminAuth,
   withAdminKey,
 } from "./_decision-log-admin-auth.js";
-import { listAllRunSummaryPathnames, listRunSummaryPathnamesForNick } from "./_decision-log-blob.js";
+import {
+  listAllDecisionCsvPathnames,
+  listAllRunSummaryPathnames,
+  listDecisionCsvPathnamesForNick,
+  listRunSummaryPathnamesForNick,
+} from "./_decision-log-blob.js";
 import { normalizeNick } from "./_decision-log.js";
 
 async function readRawBody(req) {
@@ -83,7 +88,11 @@ export default async function handler(req, res) {
     const adminKey = readAdminKeyFromRequest(req);
     const { action, nick } = await parseDeleteRequest(req);
     if (action === "all") {
-      const pathnames = await listAllRunSummaryPathnames();
+      const [runSummaryPathnames, decisionCsvPathnames] = await Promise.all([
+        listAllRunSummaryPathnames(),
+        listAllDecisionCsvPathnames(),
+      ]);
+      const pathnames = [...new Set([...runSummaryPathnames, ...decisionCsvPathnames])];
       if (pathnames.length > 0) await del(pathnames);
       redirectToView(res, adminKey, `msg=deleted_all&count=${pathnames.length}`);
       return;
@@ -96,7 +105,11 @@ export default async function handler(req, res) {
         return;
       }
 
-      const pathnames = await listRunSummaryPathnamesForNick(safeNick);
+      const [runSummaryPathnames, decisionCsvPathnames] = await Promise.all([
+        listRunSummaryPathnamesForNick(safeNick),
+        listDecisionCsvPathnamesForNick(safeNick),
+      ]);
+      const pathnames = [...new Set([...runSummaryPathnames, ...decisionCsvPathnames])];
       if (pathnames.length > 0) await del(pathnames);
       redirectToView(
         res,

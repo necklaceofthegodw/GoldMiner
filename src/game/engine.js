@@ -186,6 +186,8 @@ function pushDecision(engine, value) {
   engine.decisionEvents.push({ elapsedMs, decision });
   if (decision === 1) engine.oneDecisions += 1;
   if (decision === 0) engine.zeroDecisions += 1;
+  if (decision === 1) engine.runOneDecisions += 1;
+  if (decision === 0) engine.runZeroDecisions += 1;
 }
 
 function createShopDecisionMap() {
@@ -802,6 +804,8 @@ export function createEngine() {
     moneyFlyups: [],
     oneDecisions: 0,
     zeroDecisions: 0,
+    runOneDecisions: 0,
+    runZeroDecisions: 0,
     decisions: [],
     decisionEvents: [],
     sessionStartedAtMs: getNowMs(),
@@ -871,6 +875,9 @@ export function applySaveData(engine, saveData) {
     rockCaught: Math.max(0, Number(saveData?.stats?.rockCaught) || 0),
   };
   engine.settings.audioEnabled = saveData?.settings?.audioEnabled !== false;
+  engine.runOneDecisions = 0;
+  engine.runZeroDecisions = 0;
+  engine.sessionStartedAtMs = getNowMs();
 }
 
 export function getSaveData(engine) {
@@ -902,8 +909,12 @@ export function resetProgress(engine) {
   engine.moneyFlyups = [];
   engine.oneDecisions = 0;
   engine.zeroDecisions = 0;
+  engine.runOneDecisions = 0;
+  engine.runZeroDecisions = 0;
   engine.decisions = [];
+  engine.decisionEvents = [];
   engine.shopPurchases = createShopDecisionMap();
+  engine.sessionStartedAtMs = getNowMs();
   engine.maxUnlockedLevel = 1;
   engine.pendingNextLevel = null;
   engine.lastReward = 0;
@@ -1068,6 +1079,8 @@ export function getSnapshot(engine) {
     messageTone: engine.messageTone,
     oneDecisions: engine.oneDecisions,
     zeroDecisions: engine.zeroDecisions,
+    runOneDecisions: engine.runOneDecisions,
+    runZeroDecisions: engine.runZeroDecisions,
     maxUnlockedLevel: engine.maxUnlockedLevel,
     pendingNextLevel: engine.pendingNextLevel,
     lastReward: engine.lastReward,

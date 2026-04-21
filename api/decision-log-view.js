@@ -76,6 +76,10 @@ function renderUsersList(users, query, paging, adminKey) {
       : users
           .map((user) => {
             const userHref = withQuery("/api/decision-log-view", { nick: user.nick, key: adminKey });
+            const decisionsCsvHref = withQuery("/api/decision-user-decisions-csv", {
+              nick: user.nick,
+              key: adminKey,
+            });
             return `<tr>
       <td><a href="${userHref}">${escapeHtml(user.nick)}</a></td>
       <td>${user.runs}</td>
@@ -85,11 +89,14 @@ function renderUsersList(users, query, paging, adminKey) {
       <td>${user.ones}</td>
       <td>${user.zeros}</td>
       <td>
-        <form method="POST" action="${withQuery("/api/decision-log-delete", { key: adminKey })}" onsubmit="return confirm('Usunac podsumowania gracza ${escapeHtml(user.nick)}?');">
-          <input type="hidden" name="action" value="user" />
-          <input type="hidden" name="nick" value="${escapeHtml(user.nick)}" />
-          <button type="submit" class="btn btn-danger">Usun</button>
-        </form>
+        <div class="row-actions">
+          <a href="${decisionsCsvHref}">CSV decyzji</a>
+          <form method="POST" action="${withQuery("/api/decision-log-delete", { key: adminKey })}" onsubmit="return confirm('Usunac podsumowania gracza ${escapeHtml(user.nick)}?');">
+            <input type="hidden" name="action" value="user" />
+            <input type="hidden" name="nick" value="${escapeHtml(user.nick)}" />
+            <button type="submit" class="btn btn-danger">Usun</button>
+          </form>
+        </div>
       </td>
     </tr>`;
           })
@@ -125,6 +132,7 @@ function renderUsersList(users, query, paging, adminKey) {
       .btn-danger:hover { filter: brightness(1.06); }
       .pager { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; }
       .pager-links { display: flex; gap: 10px; }
+      .row-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
       .ok { background: #e6f7e8; border: 1px solid #9ed0a3; padding: 8px 10px; border-radius: 8px; }
       .err { background: #fde9e9; border: 1px solid #e0a8a8; padding: 8px 10px; border-radius: 8px; }
       .note { background: #fffbe8; border: 1px solid #e8d89a; padding: 8px 10px; border-radius: 8px; margin-bottom: 12px; }
@@ -132,7 +140,7 @@ function renderUsersList(users, query, paging, adminKey) {
   </head>
   <body>
     <h1>Podsumowania runow</h1>
-    <p class="note">Pelny detal pojedynczych decyzji jest eksportowany lokalnie z urzadzenia (CSV w grze). W chmurze trzymane sa tylko agregaty runow.</p>
+    <p class="note">W chmurze masz agregaty runow oraz CSV decyzji gracza (timestamp,decyzja).</p>
     <div class="toolbar">
       <a href="${csvHref}">Pobierz CSV agregatow runow</a>
       <a href="${usersJsonHref}">JSON users</a>
@@ -189,6 +197,7 @@ function renderUserRuns(nick, summaries, query, adminKey) {
   const message = renderMessage(query);
   const backHref = withQuery("/api/decision-log-view", { key: adminKey });
   const userCsvHref = withQuery("/api/decision-user-log", { nick, key: adminKey });
+  const userDecisionsCsvHref = withQuery("/api/decision-user-decisions-csv", { nick, key: adminKey });
   const deleteAction = withQuery("/api/decision-log-delete", { key: adminKey });
 
   return `<!doctype html>
@@ -216,9 +225,10 @@ function renderUserRuns(nick, summaries, query, adminKey) {
   <body>
     <p><a href="${backHref}">&larr; Wroc do listy graczy</a></p>
     <h1>Runy gracza: ${escapeHtml(nick)}</h1>
-    <p class="note">To sa agregaty runow z chmury. Pelny detal decyzji eksportujesz lokalnie z urzadzenia gracza.</p>
+    <p class="note">To sa agregaty runow z chmury. Pelny CSV decyzji (timestamp,decyzja) jest dostepny ponizej.</p>
     <div class="toolbar">
       <a href="${userCsvHref}">Pobierz CSV runow tego gracza</a>
+      <a href="${userDecisionsCsvHref}">Pobierz CSV decyzji tego gracza</a>
       <form method="POST" action="${deleteAction}" onsubmit="return confirm('Usunac podsumowania runow gracza ${escapeHtml(nick)}?');">
         <input type="hidden" name="action" value="user" />
         <input type="hidden" name="nick" value="${escapeHtml(nick)}" />

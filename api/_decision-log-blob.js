@@ -1,6 +1,7 @@
 import { get, list } from "@vercel/blob";
 import { TextDecoder } from "node:util";
 import { RUN_SUMMARY_PREFIX, normalizeNick, normalizeRunSummary, toNickSlug } from "./_decision-log.js";
+import { DECISION_CSV_PREFIX, buildDecisionCsvBasePath, normalizeDecisionCsvNick } from "./_decision-log-decisions.js";
 
 const DEFAULT_READ_CONCURRENCY = 8;
 
@@ -23,7 +24,7 @@ function toPositiveInt(value, fallback) {
   return parsed;
 }
 
-export async function listRunSummaryBlobs({ prefix = RUN_SUMMARY_PREFIX } = {}) {
+async function listBlobsByPrefix(prefix) {
   const blobs = [];
   let cursor;
   while (true) {
@@ -40,6 +41,10 @@ export async function listRunSummaryBlobs({ prefix = RUN_SUMMARY_PREFIX } = {}) 
   return blobs;
 }
 
+export async function listRunSummaryBlobs({ prefix = RUN_SUMMARY_PREFIX } = {}) {
+  return listBlobsByPrefix(prefix);
+}
+
 export async function listAllRunSummaryPathnames() {
   const blobs = await listRunSummaryBlobs({ prefix: RUN_SUMMARY_PREFIX });
   return blobs.map((blob) => blob.pathname);
@@ -52,14 +57,33 @@ export async function listRunSummaryPathnamesForNick(nick) {
   return blobs.map((blob) => blob.pathname);
 }
 
-export async function readRunSummary(pathname, { useCache = true } = {}) {
+export async function listDecisionCsvBlobs({ prefix = DECISION_CSV_PREFIX } = {}) {
+  return listBlobsByPrefix(prefix);
+}
+
+export async function listAllDecisionCsvPathnames() {
+  const blobs = await listDecisionCsvBlobs({ prefix: DECISION_CSV_PREFIX });
+  return blobs.map((blob) => blob.pathname);
+}
+
+export async function listDecisionCsvPathnamesForNick(nick) {
+  const safeNick = normalizeDecisionCsvNick(nick);
+  if (!safeNick) return [];
+  const blobs = await listDecisionCsvBlobs({ prefix: buildDecisionCsvBasePath(safeNick) });
+  return blobs.map((blob) => blob.pathname);
+}
+
+export async function readBlobText(pathname, { useCache = true } = {}) {
   const result = await get(pathname, {
     access: "private",
     useCache,
   });
-  if (!result || result.statusCode !== 200 || !result.stream) return null;
+  if (!result || result.statusCode !== 200 || !result.stream) return "";
+  return readStreamAsText(result.stream);
+}
 
-  const text = (await readStreamAsText(result.stream)).trim();
+export async function readRunSummary(pathname, { useCache = true } = {}) {
+  const text = (await readBlobText(pathname, { useCache })).trim();
   if (!text) return null;
 
   try {
