@@ -349,9 +349,6 @@ function App() {
           />
           <header className="start-hero">
             <h1 id="start-title">Gold Miner</h1>
-            <p className="start-tagline">
-              Name your miner, beat the target, and turn every clean hook drop into a bigger haul.
-            </p>
           </header>
 
           <div className="start-nugget-shell">

@@ -95,7 +95,7 @@ body {
   isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto auto 1fr;
+  grid-template-rows: auto auto 1fr auto;
   justify-items: center;
   align-content: start;
   gap: clamp(0.4rem, 1vw, 0.72rem);
@@ -228,11 +228,13 @@ body {
 }
 
 .start-hero {
+  grid-row: 1;
   width: min(660px, 100%);
   display: grid;
   gap: 0.2rem;
   text-align: center;
   justify-items: center;
+  margin-top: 0.22rem;
 }
 
 .start-hero h1 {
@@ -253,6 +255,7 @@ body {
 }
 
 .start-nugget-shell {
+  grid-row: 2;
   width: min(430px, 54%);
   aspect-ratio: 920 / 640;
   display: grid;
@@ -407,6 +410,8 @@ body {
 }
 
 .control-hint {
+  grid-row: 3;
+  align-self: center;
   margin: 0;
   color: rgba(240, 229, 201, 0.88);
   font-size: 1.02rem;
@@ -414,11 +419,10 @@ body {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   text-align: center;
-  position: relative;
-  top: calc(1rem + 40px);
 }
 
 .start-rule-strip {
+  grid-row: 4;
   width: 100%;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -820,7 +824,7 @@ body {
 
   .start-hero {
     gap: 0.12rem;
-    transform: translateY(-12px);
+    transform: translateY(-4px);
   }
 
   .start-hero h1 {
@@ -835,7 +839,7 @@ body {
   .start-nugget-shell {
     width: min(300px, 42%);
     padding: 0.26rem;
-    transform: translateY(-37px);
+    transform: translateY(-18px);
   }
 
   .start-nugget-asset {
@@ -878,7 +882,6 @@ body {
 
   .control-hint {
     font-size: 0.7rem;
-    top: calc(-0.28rem - 15px);
   }
 
   .start-rule-strip {
@@ -1035,7 +1038,7 @@ body {
   }
 
   .start-hero {
-    transform: translateY(-10px);
+    transform: translateY(-2px);
   }
 
   .start-hero h1 {
@@ -1050,7 +1053,7 @@ body {
   .start-nugget-shell {
     width: min(330px, 46%);
     padding: 0.3rem;
-    transform: translateY(-33px);
+    transform: translateY(-14px);
   }
 
   .start-nugget-asset {
@@ -1083,7 +1086,6 @@ body {
 
   .control-hint {
     font-size: 0.78rem;
-    top: calc(-0.2rem - 15px);
   }
 
   .start-rule-strip {
