@@ -1,7 +1,7 @@
 {
   "name": "Gold Miner",
   "short_name": "Miner",
-  "description": "A canvas mining game with hidden binary decision strategy.",
+  "description": "Gold Miner - Dig, dig dig.. Keep digging don't stop",
   "start_url": "/",
   "scope": "/",
   "display": "fullscreen",
