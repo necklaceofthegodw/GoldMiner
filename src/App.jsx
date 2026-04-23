@@ -539,7 +539,7 @@ function App() {
               <strong>{snapshot.stats.goldCaught}</strong>
             </div>
             <div>
-              <span>Diamenty + Mystery</span>
+              <span>Diamonds + Mystery</span>
               <strong>{snapshot.stats.diamondCaught + snapshot.stats.mysteryCaught}</strong>
             </div>
           </div>

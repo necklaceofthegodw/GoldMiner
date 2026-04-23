@@ -199,10 +199,8 @@ function createShopDecisionMap() {
 }
 
 function pushShopDecisions(engine) {
-  for (const item of SHOP_ITEMS) {
-    const purchased = (engine.shopPurchases[item.id] ?? 0) > 0;
-    pushDecision(engine, purchased ? 1 : 0);
-  }
+  const boughtAnythingInShop = SHOP_ITEMS.some((item) => (engine.shopPurchases[item.id] ?? 0) > 0);
+  pushDecision(engine, boughtAnythingInShop ? 1 : 0);
 }
 
 function setMessage(engine, text, tone = "neutral") {
