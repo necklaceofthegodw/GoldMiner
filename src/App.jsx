@@ -19,8 +19,6 @@ import {
 } from "./game/engine";
 import {
   appendDecisionEntries,
-  finalizeDecisionSession,
-  syncDecisionRowsChunk,
   startDecisionSession,
 } from "./game/decisionLogClient";
 import { GAME_ICON_SOURCES } from "./game/iconSources";
@@ -100,18 +98,6 @@ function App() {
         const oldPhase = previousPhase;
         previousPhase = engine.phase;
         saveGameSave(getSaveData(engine));
-
-        const endedLevel =
-          oldPhase === "playing" &&
-          (engine.phase === "shop" || engine.phase === "level-failed" || engine.phase === "run-complete");
-        const enteredNextLevelFromShop = oldPhase === "shop" && engine.phase === "playing";
-        if (endedLevel || enteredNextLevelFromShop) {
-          syncDecisionRowsChunk();
-        }
-
-        if (engine.phase === "level-failed" || engine.phase === "run-complete") {
-          finalizeDecisionSession(getSnapshot(engine), engine.phase);
-        }
 
         if (oldPhase === "playing" && engine.phase === "shop") {
           setShowLevelSummary(true);

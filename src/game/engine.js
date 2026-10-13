@@ -183,7 +183,7 @@ function pushDecision(engine, value) {
   const decision = value === 1 ? 1 : 0;
   const elapsedMs = Math.max(0, Math.round(getNowMs() - engine.sessionStartedAtMs));
   engine.decisions.push(decision);
-  engine.decisionEvents.push({ elapsedMs, decision });
+  engine.decisionEvents.push({ elapsedMs, decision, timestampGeneration: new Date().toISOString() });
   if (decision === 1) engine.oneDecisions += 1;
   if (decision === 0) engine.zeroDecisions += 1;
   if (decision === 1) engine.runOneDecisions += 1;

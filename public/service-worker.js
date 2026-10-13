@@ -1,4 +1,4 @@
-const CACHE_NAME = "binary-miner-v1";
+const CACHE_NAME = "binary-miner-v2";
 const APP_SHELL = [
   "/",
   "/index.html",
