@@ -47,6 +47,26 @@ npm run preview
 
 ## Decision HTTP API (Batyskaf arm protocol)
 
+The start screen counts down five seconds and starts automatically. PLAY (or
+Enter/Space) can start earlier. The game assigns a new `Miner1`, `Miner2`, ... name
+to every run using `POST /api/miner-nick`; no nickname input is shown.
+
+Names are reserved globally in a private Vercel Blob store using conditional
+writes (ETag compare-and-swap), including concurrent requests from different
+computers. Configure server-only `BLOB_READ_WRITE_TOKEN` on Vercel, or in
+`.env.local` for Vite development/preview. All deployments sharing the name
+sequence must use the same store. Do not delete/reset
+`miner-identity/global-counter-v1.json`, which preserves already allocated numbers.
+An abandoned page or a lost response can leave gaps, but numbers are not reused.
+This is normally one read and one write per reserved name, not per decision.
+Existing decision-log deletion endpoints do not delete the identity counter.
+
+Reservation starts during the countdown. If it takes longer, the game waits for
+the server; on failure it shows a retry message. It never falls back to a local
+counter. Automatic start uses the normal viewport; fullscreen requires a user
+gesture. The generated nickname is local log metadata; `X-Player-ID` still comes
+from the experiment portal.
+
 Every decision starts a separate POST immediately when its event is consumed by
 the game loop. There is no batching or waiting for a level/run to finish. One
 request is in flight at a time, as in Batyskaf. The configured URL is the complete
@@ -93,7 +113,7 @@ The browser equivalent of Batyskaf's launch arguments is:
 | Game identifier | `ChoiceGameId` | `VITE_GOLDMINER_GAME_ID` (default `goldminer`) |
 | Participant identifier | `ChoicePlayerId` | `VITE_GOLDMINER_PLAYER_ID` |
 
-The portal player ID is separate from the locally entered nickname and the run
+The portal player ID is separate from the automatically assigned nickname and the run
 UUID. Neither the nickname nor a generated UUID substitutes for the portal ID.
 URL parameters override `window.GOLDMINER_CHOICE_CONFIG`, which overrides Vite
 defaults. `.env.example` contains the public defaults; use `.env.local` locally.
@@ -173,7 +193,8 @@ enable it on your actual API before testing from a browser.
 
 The existing `api/decision-*` handlers remain for access to historical Vercel Blob
 logs (admin access still requires `DECISION_LOG_ADMIN_KEY` and the Blob token).
-The new frontend does not call them and generates no Blob writes.
+The frontend does not call those historical logging endpoints. Only the global
+nickname counter uses Blob; decision events are sent directly to the arm API.
 
 ### Verification
 

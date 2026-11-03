@@ -23,6 +23,7 @@ import {
 } from "./game/decisionLogClient";
 import { GAME_ICON_SOURCES } from "./game/iconSources";
 import { loadGameSave, saveGameSave } from "./game/storage";
+import { allocateMinerNick } from "./game/minerIdentity.js";
 
 function formatMoney(value) {
   return `$${Math.max(0, Math.round(value)).toLocaleString()}`;
@@ -34,7 +35,8 @@ function App() {
   const startDiamondIcon = GAME_ICON_SOURCES.diamond;
   const canvasRef = useRef(null);
   const summaryTimerRef = useRef(0);
-  const nickInputRef = useRef(null);
+  const startingRunRef = useRef(false);
+  const nickPromiseRef = useRef(null);
 
   const [engine] = useState(() => {
     const created = createEngine();
@@ -47,7 +49,8 @@ function App() {
   const [hasEnteredGame, setHasEnteredGame] = useState(false);
   const [showLevelSummary, setShowLevelSummary] = useState(false);
   const [isPortraitMobile, setIsPortraitMobile] = useState(false);
-  const [playerNick, setPlayerNick] = useState("");
+  const [startCountdown, setStartCountdown] = useState(5);
+  const [startError, setStartError] = useState("");
   const [controlHint, setControlHint] = useState("Press Space to use hook");
 
   const requestLandscapeLock = useCallback(() => {
@@ -206,26 +209,47 @@ function App() {
     if (persist) saveGameSave(getSaveData(engine));
   }, [engine]);
 
-  const startNewRun = useCallback(() => {
-    const trimmedNick = playerNick.trim();
-    if (!trimmedNick) {
-      nickInputRef.current?.focus();
-      return;
+  const startNewRun = useCallback(async ({ automatic = false } = {}) => {
+    if (startingRunRef.current || engine.phase === "playing") return;
+    startingRunRef.current = true;
+    setStartError("");
+    // Fullscreen requires a user gesture; automatic starts use the normal viewport.
+    if (!automatic) {
+      requestFullscreen();
+      requestLandscapeLock();
     }
+    try {
+      const nick = await (nickPromiseRef.current ??= allocateMinerNick());
+      startDecisionSession(nick);
+      resetProgress(engine);
+      startLevel(engine, 1);
+      setHasEnteredGame(true);
+      setShowLevelSummary(false);
+      refreshSnapshot(true);
+    } catch {
+      setStartError("Could not reserve your miner name. Check your connection and press PLAY or Start Over to retry.");
+    } finally {
+      nickPromiseRef.current = null;
+      startingRunRef.current = false;
+    }
+  }, [engine, refreshSnapshot, requestFullscreen, requestLandscapeLock]);
 
-    requestFullscreen();
-    requestLandscapeLock();
-    startDecisionSession(trimmedNick);
-    resetProgress(engine);
-    startLevel(engine, 1);
-    setHasEnteredGame(true);
-    setShowLevelSummary(false);
-    refreshSnapshot(true);
-  }, [engine, playerNick, refreshSnapshot, requestFullscreen, requestLandscapeLock]);
-
-  const handleNickFocus = useCallback(() => {
-    requestLandscapeLock();
-  }, [requestLandscapeLock]);
+  useEffect(() => {
+    if (hasEnteredGame) return undefined;
+    // Reserve during countdown; reuse the request across StrictMode effect replay.
+    nickPromiseRef.current ??= allocateMinerNick();
+    void nickPromiseRef.current.catch(() => {});
+    const deadline = performance.now() + 5000;
+    const interval = window.setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((deadline - performance.now()) / 1000));
+      setStartCountdown(remaining);
+      if (remaining === 0) {
+        window.clearInterval(interval);
+        void startNewRun({ automatic: true });
+      }
+    }, 100);
+    return () => window.clearInterval(interval);
+  }, [hasEnteredGame, startNewRun]);
 
   const handleCanvasTap = useCallback(() => {
     if (!hasEnteredGame) return;
@@ -285,10 +309,10 @@ function App() {
   const isFailed = hasEnteredGame && snapshot.phase === "level-failed";
   const isComplete = hasEnteredGame && snapshot.phase === "run-complete";
   const binaryTotal = snapshot.oneDecisions + snapshot.zeroDecisions;
-  const canStartGame = playerNick.trim().length > 0;
 
   return (
     <div className={`scene-root${isPortraitMobile ? " scene-root--portrait" : ""}`}>
+      {startError && <p className="start-error" role="alert">{startError}</p>}
       <canvas
         ref={canvasRef}
         width={GAME_WIDTH}
@@ -345,30 +369,15 @@ function App() {
               loading="lazy"
               aria-hidden="true"
             />
-            <form
-              className="start-form start-form--nugget"
-              onSubmit={(event) => {
-                event.preventDefault();
-                startNewRun();
-              }}
-            >
-              <label htmlFor="player-nick" className="nick-label">Miner Name</label>
-              <input
-                ref={nickInputRef}
-                id="player-nick"
-                type="text"
-                className="nick-input"
-                value={playerNick}
-                onChange={(event) => setPlayerNick(event.target.value)}
-                onFocus={handleNickFocus}
-                maxLength={32}
-                placeholder="Enter your name"
-                autoComplete="nickname"
-              />
-              <button type="submit" className="play-cta" disabled={!canStartGame}>
+            <div className="start-form start-form--nugget">
+              <p className="start-countdown" role="timer" aria-live="polite" aria-atomic="true">
+                <span>{startError ? "Ready to retry" : startCountdown > 0 ? "Starting in" : "Starting…"}</span>
+                {startCountdown > 0 && <strong>{startCountdown}</strong>}
+              </p>
+              <button type="button" className="play-cta" onClick={startNewRun}>
                 <span>PLAY</span>
               </button>
-            </form>
+            </div>
           </div>
 
           <p className="control-hint">{controlHint}</p>

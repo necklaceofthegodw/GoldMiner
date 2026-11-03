@@ -81,10 +81,6 @@ body {
   --start-title-color: #f8d468;
   --start-title-shadow: 0 4px 0 #825313, 0 14px 28px rgba(0, 0, 0, 0.3);
   --start-copy-color: rgba(238, 228, 205, 0.92);
-  --start-label-color: #64451f;
-  --start-input-border: rgba(116, 79, 35, 0.26);
-  --start-input-bg: rgba(255, 240, 196, 0.86);
-  --start-input-focus: rgba(255, 221, 118, 0.95);
   --start-card-border: rgba(202, 154, 65, 0.28);
   --start-card-bg: linear-gradient(180deg, rgba(93, 60, 26, 0.82), rgba(43, 27, 12, 0.9));
   --start-card-title: #ffde87;
@@ -297,40 +293,45 @@ body {
   z-index: 1;
 }
 
-.nick-label {
+.start-countdown {
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
   margin: 0;
-  padding: 0.16rem 0.82rem;
-  border-radius: 999px;
+  padding: 0.25rem 0.9rem;
   border: 1px solid rgba(105, 69, 24, 0.48);
-  background: linear-gradient(180deg, rgba(247, 210, 112, 0.9), rgba(222, 173, 72, 0.86));
-  color: #5d3a16;
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  box-shadow: inset 0 1px 0 rgba(255, 245, 207, 0.58), 0 4px 10px rgba(61, 35, 10, 0.2);
-}
-
-.nick-input {
-  width: min(100%, 280px);
-  border: 2px solid rgba(121, 83, 36, 0.44);
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255, 245, 216, 0.96), rgba(241, 223, 180, 0.94));
+  border-radius: 12px;
+  background: rgba(255, 240, 196, 0.94);
   color: #4a3012;
-  font-family: var(--start-font-body);
-  font-size: 0.86rem;
-  font-weight: 700;
-  padding: 0.56rem 0.84rem;
-  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.52), 0 10px 20px rgba(68, 42, 15, 0.18);
+  text-align: center;
+  font-weight: 900;
 }
 
-.nick-input::placeholder {
-  color: rgba(95, 67, 28, 0.68);
+.start-countdown span {
+  font-size: clamp(0.65rem, 2vw, 0.9rem);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-.nick-input:focus {
-  outline: 2px solid var(--start-input-focus);
-  outline-offset: 2px;
+.start-countdown strong {
+  font-size: clamp(1.7rem, 5vw, 3rem);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.start-error {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  width: min(90%, 560px);
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  color: #fff;
+  background: #762c20;
+  text-align: center;
 }
 
 .play-cta {
@@ -853,19 +854,6 @@ body {
     transform: translateY(calc(-2% + 24px));
   }
 
-  .nick-label {
-    margin: 0;
-    padding: 0.14rem 0.62rem;
-    font-size: 0.66rem;
-  }
-
-  .nick-input {
-    border-width: 1px;
-    border-radius: 10px;
-    font-size: 0.62rem;
-    padding: 0.28rem 0.42rem;
-  }
-
   .play-cta {
     width: min(152px, 80%);
     min-height: 30px;
@@ -1065,16 +1053,6 @@ body {
     gap: 0.28rem;
     padding: 0.14rem 0.24rem 0.08rem;
     transform: translateY(calc(-2% + 28px));
-  }
-
-  .nick-label {
-    font-size: 0.7rem;
-    padding: 0.15rem 0.66rem;
-  }
-
-  .nick-input {
-    font-size: 0.68rem;
-    padding: 0.34rem 0.5rem;
   }
 
   .play-cta {
