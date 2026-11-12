@@ -24,6 +24,7 @@ import {
 import { GAME_ICON_SOURCES } from "./game/iconSources";
 import { loadGameSave, saveGameSave } from "./game/storage";
 import { allocateMinerNick } from "./game/minerIdentity.js";
+import { getSlotStatus, readExperimentSlot, slotAllowsPlay } from "./game/experimentSlot.js";
 
 function formatMoney(value) {
   return `$${Math.max(0, Math.round(value)).toLocaleString()}`;
@@ -37,6 +38,26 @@ function App() {
   const summaryTimerRef = useRef(0);
   const startingRunRef = useRef(false);
   const nickPromiseRef = useRef(null);
+  const [slot] = useState(() => readExperimentSlot());
+  const [slotStatus, setSlotStatus] = useState(() => getSlotStatus(slot));
+  const [slotSeconds, setSlotSeconds] = useState(0);
+
+  useEffect(() => {
+    const sync = () => {
+      const now = Date.now();
+      setSlotStatus(getSlotStatus(slot, now));
+      if (slot && !slot.invalid) setSlotSeconds(Math.max(0, Math.ceil((slot.startAt - now) / 1000)));
+    };
+    sync();
+    const timer = window.setInterval(sync, 100);
+    window.addEventListener("focus", sync);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", sync);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, [slot]);
 
   const [engine] = useState(() => {
     const created = createEngine();
@@ -84,6 +105,14 @@ function App() {
       const delta = (now - previous) / 1000;
       previous = now;
 
+      if (!slotAllowsPlay(slot)) {
+        consumeDecisionEvents(engine);
+        consumeAudioEvents(engine);
+        setSlotStatus(getSlotStatus(slot));
+        frameHandle = window.requestAnimationFrame(animate);
+        return;
+      }
+
       updateEngine(engine, delta);
       drawEngine(context, engine);
 
@@ -129,7 +158,7 @@ function App() {
     drawEngine(context, engine);
     frameHandle = window.requestAnimationFrame(animate);
     return () => window.cancelAnimationFrame(frameHandle);
-  }, [audio, engine]);
+  }, [audio, engine, slot]);
 
   useEffect(() => {
     const persist = () => saveGameSave(getSaveData(engine));
@@ -210,6 +239,7 @@ function App() {
   }, [engine]);
 
   const startNewRun = useCallback(async ({ automatic = false } = {}) => {
+    if (!slotAllowsPlay(slot)) return;
     if (startingRunRef.current || engine.phase === "playing") return;
     startingRunRef.current = true;
     setStartError("");
@@ -220,6 +250,7 @@ function App() {
     }
     try {
       const nick = await (nickPromiseRef.current ??= allocateMinerNick());
+      if (!slotAllowsPlay(slot)) return;
       startDecisionSession(nick);
       resetProgress(engine);
       startLevel(engine, 1);
@@ -232,13 +263,17 @@ function App() {
       nickPromiseRef.current = null;
       startingRunRef.current = false;
     }
-  }, [engine, refreshSnapshot, requestFullscreen, requestLandscapeLock]);
+  }, [engine, refreshSnapshot, requestFullscreen, requestLandscapeLock, slot]);
 
   useEffect(() => {
-    if (hasEnteredGame) return undefined;
+    if (hasEnteredGame || slotStatus === "ended" || slotStatus === "invalid") return undefined;
     // Reserve during countdown; reuse the request across StrictMode effect replay.
     nickPromiseRef.current ??= allocateMinerNick();
     void nickPromiseRef.current.catch(() => {});
+    if (slot) {
+      if (slotStatus === "active") void startNewRun({ automatic: true });
+      return undefined;
+    }
     const deadline = performance.now() + 5000;
     const interval = window.setInterval(() => {
       const remaining = Math.max(0, Math.ceil((deadline - performance.now()) / 1000));
@@ -249,27 +284,31 @@ function App() {
       }
     }, 100);
     return () => window.clearInterval(interval);
-  }, [hasEnteredGame, startNewRun]);
+  }, [hasEnteredGame, startNewRun, slot, slotStatus]);
 
   const handleCanvasTap = useCallback(() => {
+    if (!slotAllowsPlay(slot)) return;
     if (!hasEnteredGame) return;
     if (snapshot.phase !== "playing") return;
     releaseHook(engine);
     refreshSnapshot(false);
-  }, [engine, hasEnteredGame, refreshSnapshot, snapshot.phase]);
+  }, [engine, hasEnteredGame, refreshSnapshot, snapshot.phase, slot]);
 
   const handlePurchase = (itemId) => {
+    if (!slotAllowsPlay(slot)) return;
     purchaseShopItem(engine, itemId);
     refreshSnapshot(true);
   };
 
   const handleNextLevel = useCallback(() => {
+    if (!slotAllowsPlay(slot)) return;
     nextLevel(engine);
     refreshSnapshot(true);
-  }, [engine, refreshSnapshot]);
+  }, [engine, refreshSnapshot, slot]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
+      if (!slotAllowsPlay(slot)) return;
       if (event.repeat) return;
 
       if (!hasEnteredGame && (event.code === "Enter" || event.code === "Space")) {
@@ -301,18 +340,30 @@ function App() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [engine, handleNextLevel, hasEnteredGame, refreshSnapshot, showLevelSummary, snapshot.phase, startNewRun]);
+  }, [engine, handleNextLevel, hasEnteredGame, refreshSnapshot, showLevelSummary, snapshot.phase, startNewRun, slot]);
 
-  const isPlaying = hasEnteredGame && snapshot.phase === "playing";
-  const isShop = hasEnteredGame && snapshot.phase === "shop" && !showLevelSummary;
-  const isSummary = hasEnteredGame && snapshot.phase === "shop" && showLevelSummary;
-  const isFailed = hasEnteredGame && snapshot.phase === "level-failed";
-  const isComplete = hasEnteredGame && snapshot.phase === "run-complete";
+  const canPlay = slotStatus === "active" || slotStatus === "unscheduled";
+  const isPlaying = canPlay && hasEnteredGame && snapshot.phase === "playing";
+  const isShop = canPlay && hasEnteredGame && snapshot.phase === "shop" && !showLevelSummary;
+  const isSummary = canPlay && hasEnteredGame && snapshot.phase === "shop" && showLevelSummary;
+  const isFailed = canPlay && hasEnteredGame && snapshot.phase === "level-failed";
+  const isComplete = canPlay && hasEnteredGame && snapshot.phase === "run-complete";
   const binaryTotal = snapshot.oneDecisions + snapshot.zeroDecisions;
 
   return (
     <div className={`scene-root${isPortraitMobile ? " scene-root--portrait" : ""}`}>
-      {startError && <p className="start-error" role="alert">{startError}</p>}
+      {canPlay && startError && <p className="start-error" role="alert">{startError}</p>}
+      {!canPlay && (
+        <section className="scene-panel slot-screen" aria-live="polite">
+          <h1>{slotStatus === "ended" ? "Thank you for participating!" : slotStatus === "invalid" ? "Invalid experiment slot" : "Waiting for your game"}</h1>
+          {slotStatus === "waiting" && <>
+            <p>Your game will start automatically at {new Date(slot.startAt).toLocaleTimeString()}.</p>
+            <p role="timer">Starting in {Math.floor(slotSeconds / 60)}:{String(slotSeconds % 60).padStart(2, "0")}</p>
+          </>}
+          {slotStatus === "ended" && <p>Your time slot has ended. You can return to the portal.</p>}
+          {slotStatus === "invalid" && <p>Please open the game again using the link from the portal.</p>}
+        </section>
+      )}
       <canvas
         ref={canvasRef}
         width={GAME_WIDTH}
@@ -322,7 +373,7 @@ function App() {
         aria-label="Gold Miner gameplay canvas"
       />
 
-      {!hasEnteredGame ? (
+      {canPlay && !hasEnteredGame ? (
         <section
           className="scene-panel start-screen start-screen--mine"
           role="dialog"

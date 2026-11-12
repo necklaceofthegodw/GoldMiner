@@ -47,6 +47,35 @@ npm run preview
 
 ## Decision HTTP API (Batyskaf arm protocol)
 
+### Portal experiment slot
+
+The portal opens the game using query parameters (GET navigation to the game page):
+
+```text
+https://game.example/?ChoiceArm=alice&ChoicePlayerId=participant-123&ChoiceStartAt=2026-11-12T12%3A00%3A00Z&ChoiceEndAt=2026-11-12T12%3A10%3A00Z
+```
+
+`ChoiceUrl` can replace `ChoiceArm` as documented below. `ChoiceStartAt` and
+`ChoiceEndAt` are ISO 8601 timestamps with an explicit timezone; UTC `Z` is
+recommended. Encode parameter values with `URLSearchParams`. Aliases `startAt`
+and `endAt` are also accepted. Both times are required if either is provided.
+Invalid/missing-half/reversed intervals show an error and block gameplay.
+
+Before the start the waiting room counts down and blocks PLAY, keyboard and touch.
+The game starts automatically at the start time, once a unique nickname is ready;
+opening an already active slot starts immediately. At the end, including when the
+page was opened after expiry, gameplay stops and a thank-you screen replaces it.
+Controls, upgrades and restarts cannot generate new decisions after expiry.
+Boundary checks run in the game loop and input handlers as well as the UI timer,
+so returning from a background tab cannot resume an expired slot.
+
+Timing uses the participant computer's clock; keep participant clocks synchronized.
+This is a browser-side scheduling mechanism, not server-side enforcement against
+modified clients. Already generated decisions in the durable outbox may still be
+delivered/retried after slot end; no new decisions are generated then.
+
+When neither time is supplied, the game keeps the standalone five-second start.
+
 The start screen counts down five seconds and starts automatically. PLAY (or
 Enter/Space) can start earlier. The game assigns a new `Miner1`, `Miner2`, ... name
 to every run using `POST /api/miner-nick`; no nickname input is shown.
@@ -189,14 +218,16 @@ ARM_BOB_URL=http://157.158.83.183:8002/api/v1/data
 ARM_BOB_API_KEY=
 ```
 
-Fill in the real keys from the equipment administrator, then restart Vite.
+The current Alice/Bob endpoints do not require API keys. Leave both `_API_KEY`
+values empty. If a key is configured later, the backend includes `X-API-Key`;
+otherwise that header is omitted. Restart Vite after changing `.env`.
 The local `.env` is ignored by Git; `.env.example` is the shareable template.
 For Vercel, set these same variables in the deployment environment settings.
 Changing one project's `.env` does not automatically update the other project.
 
 Both HTTP and HTTPS launches use `POST /api/arm?arm=alice` (or `bob`) on the
 game server. The backend reads the selected URL and API key from its environment,
-and adds `X-API-Key`; the portal needs only the arm and participant ID.
+and adds `X-API-Key` only when configured; the portal needs only the arm and participant ID.
 Arm credentials are never included in the frontend bundle or launch URL.
 The relay forwards one decision at a time without storage, batching or retries.
 This adds a network hop and avoids browser mixed-content and arm CORS limitations.

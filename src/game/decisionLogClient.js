@@ -1,9 +1,11 @@
 import { ChoiceHttpClient } from "./choiceHttpClient.js";
 import { readChoiceHttpConfig } from "./choiceHttpConfig.js";
+import { readExperimentSlot, slotAllowsPlay } from "./experimentSlot.js";
 
 const LOCAL_DECISION_LOG_STORAGE_KEY = "goldminer:decision-detail:v1";
 const MAX_LOCAL_DECISION_ROWS = 12000;
 const httpClient = new ChoiceHttpClient(readChoiceHttpConfig());
+const experimentSlot = readExperimentSlot();
 let localDecisionRows = loadLocalDecisionRows();
 let activeNick = "";
 let activeSessionId = "";
@@ -23,6 +25,7 @@ function loadLocalDecisionRows() {
 }
 
 export function appendDecisionEntries(entries) {
+  if (!slotAllowsPlay(experimentSlot)) return;
   if (!Array.isArray(entries) || !activeNick || !activeSessionId) return;
   let changed = false;
   for (const entry of entries) {
@@ -30,6 +33,7 @@ export function appendDecisionEntries(entries) {
       !Number.isFinite(entry.elapsedMs) || entry.elapsedMs < 0) continue;
     const loggedAt = entry.timestampGeneration ?? new Date().toISOString();
     if (!Number.isFinite(Date.parse(loggedAt))) continue;
+    if (!slotAllowsPlay(experimentSlot, Date.parse(loggedAt))) continue;
     localDecisionRows.push({
       nick: activeNick, sessionId: activeSessionId,
       elapsedMs: entry.elapsedMs, decision: entry.decision, loggedAt,

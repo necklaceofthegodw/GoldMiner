@@ -22,12 +22,8 @@ export function createArmHandler(fetchImpl = globalThis.fetch, env = process.env
     const prefix = `ARM_${arm.toUpperCase()}`;
     const configuredUrl = env[`${prefix}_URL`] || ARM_ENDPOINTS[arm];
     if (!health) {
-      if (!env[`${prefix}_API_KEY`]?.trim()) {
-        res.statusCode = 503;
-        res.end("Arm API key is not configured on the server");
-        return;
-      }
-      headers["x-api-key"] = env[`${prefix}_API_KEY`].trim();
+      const apiKey = env[`${prefix}_API_KEY`]?.trim();
+      if (apiKey) headers["x-api-key"] = apiKey;
       for (const name of ["x-game-id", "x-player-id"]) {
         const value = req.headers[name];
         if (typeof value !== "string" || !/^[\x20-\x7e]+$/.test(value)) {

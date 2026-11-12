@@ -36,11 +36,20 @@ test("relay launches need portal identity but no browser API key", (t) => {
   assert.equal(isChoiceHttpConfigured({...config,endpoint:"https://other.example/api/arm?arm=alice"}), false);
 });
 
-test("relay reads custom arm URL from backend env and fails closed without key", async () => {
+test("relay reads custom arm URL and includes an optional server key", async () => {
   const req = {url:"/?arm=alice",method:"POST",headers:{"x-game-id":"goldminer","x-player-id":"p"},body:{bit:0}};
-  const missing = response();
-  await createArmHandler(() => assert.fail("No key must prevent sending"), {})(req,missing);
-  assert.equal(missing.statusCode,503);
+  for (const arm of ["alice", "bob"]) {
+    const missing = response();
+    await createArmHandler(async (url, options) => {
+      assert.equal(url, ARM_ENDPOINTS[arm]);
+      assert.equal(Object.hasOwn(options.headers, "x-api-key"), false);
+      assert.equal(options.headers["x-player-id"], "p");
+      assert.equal(options.headers["x-game-id"], "goldminer");
+      assert.equal(JSON.parse(options.body).bit, 0);
+      return {status:204};
+    }, {} )({...req, url:`/?arm=${arm}`},missing);
+    assert.equal(missing.statusCode,204);
+  }
   const res = response();
   await createArmHandler(async (url, options) => {
     assert.equal(url,"http://arm.internal:8001/api/v1/data");

@@ -293,6 +293,20 @@ body {
   z-index: 1;
 }
 
+.slot-screen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 2rem;
+}
+
+.slot-screen h1 { color: #f8d468; }
+.slot-screen p { margin: 0; }
+.slot-screen [role="timer"] { font-size: 2rem; font-variant-numeric: tabular-nums; }
+
 .start-countdown {
   display: grid;
   justify-items: center;
