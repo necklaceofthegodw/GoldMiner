@@ -1,4 +1,4 @@
-import { ARM_ENDPOINTS } from "./armEndpoints.js";
+import { readPortalLaunch } from "./portalLaunch.js";
 
 function isHeaderValue(value) {
   return typeof value === "string" && /^[\x20-\x7e]+$/.test(value);
@@ -9,51 +9,30 @@ export function isChoiceHttpConfigured(config) {
   try {
     const url = new URL(config.endpoint);
     serverKey = url.origin === globalThis.location?.origin && url.pathname === "/api/arm" &&
-      ["alice", "bob"].includes(url.searchParams.get("arm"));
+      Boolean(url.searchParams.get("armEndpoint"));
   } catch { /* Invalid endpoint remains unconfigured. */ }
   return Boolean(config?.endpoint) &&
     isHeaderValue(config.gameId) && isHeaderValue(config.playerId) && (serverKey || isHeaderValue(config.apiKey));
 }
 
-// Portal parameters override runtime configuration, then public Vite defaults.
-// Credentials are accepted only at runtime, never from build variables or the query string.
+// Portal input comes exclusively from POST /api/launch, stored in this tab.
+// Runtime config is retained only for standalone development/custom receivers.
 export function readChoiceHttpConfig({
   location = globalThis.location,
-  history = globalThis.history,
+  launch = readPortalLaunch(),
   runtime = globalThis.GOLDMINER_CHOICE_CONFIG ?? {},
-  env = import.meta.env ?? {},
 } = {}) {
-  const query = new URLSearchParams(location?.search ?? "");
-  const fragment = new URLSearchParams((location?.hash ?? "").replace(/^#/, ""));
-  const fragmentKey = fragment.get("ChoiceApiKey") ?? "";
-  if (fragment.has("ChoiceApiKey")) {
-    fragment.delete("ChoiceApiKey");
-    const remaining = fragment.toString();
-    // Consume the launch credential once. It stays in memory, not in saved URLs.
-    history?.replaceState(history.state, "", `${location.pathname}${location.search}${remaining ? `#${remaining}` : ""}`);
+  if (launch) {
+    return {
+      endpoint: launch.invalid ? "" : `${location.origin}/api/arm?armEndpoint=${encodeURIComponent(launch.armEndpoint)}`,
+      gameId: "goldminer", playerId: launch.invalid ? "" : launch.playerId, apiKey: "",
+    };
   }
-  const arm = String(query.get("ChoiceArm") ?? runtime.arm ?? env.VITE_GOLDMINER_ARM ?? "").trim().toLowerCase();
-  const endpoint = String(query.get("ChoiceUrl") ?? runtime.endpoint ?? (env.VITE_GOLDMINER_CHOICE_URL || ARM_ENDPOINTS[arm]) ?? "").trim();
-  let validEndpoint = "";
+  let endpoint = "";
   try {
-    const url = new URL(endpoint);
-    const knownArm = Object.keys(ARM_ENDPOINTS).find((name) => ARM_ENDPOINTS[name] === endpoint);
-    if (knownArm && ["http:", "https:"].includes(location?.protocol)) {
-      validEndpoint = `${location.origin}/api/arm?arm=${knownArm}`;
-    }
-    const localHttp = url.protocol === "http:" &&
-      ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) && location?.protocol !== "https:";
-    if ((url.protocol === "https:" || localHttp) && !url.username && !url.password &&
-      !url.hash && !/[\r\n]/.test(endpoint)) {
-      validEndpoint = endpoint; // Preserve the exact endpoint path and trailing slash.
-    }
-  } catch {
-    // Missing/invalid configuration leaves the local decision log available.
-  }
-  return {
-    endpoint: validEndpoint,
-    gameId: String(query.get("ChoiceGameId") ?? runtime.gameId ?? env.VITE_GOLDMINER_GAME_ID ?? "goldminer").trim(),
-    playerId: String(query.get("ChoicePlayerId") ?? runtime.playerId ?? env.VITE_GOLDMINER_PLAYER_ID ?? "").trim(),
-    apiKey: String(runtime.apiKey ?? fragmentKey).trim(),
-  };
+    const url = new URL(runtime.endpoint);
+    const local = url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) && location?.protocol !== "https:";
+    if ((url.protocol === "https:" || local) && !url.username && !url.password && !url.hash) endpoint = url.href;
+  } catch { /* No portal launch: local standalone game. */ }
+  return { endpoint, gameId: "goldminer", playerId: String(runtime.playerId ?? "").trim(), apiKey: String(runtime.apiKey ?? "").trim() };
 }

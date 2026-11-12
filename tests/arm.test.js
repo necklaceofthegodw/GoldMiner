@@ -4,18 +4,13 @@ import { createArmHandler } from "../api/arm.js";
 import { readChoiceHttpConfig, isChoiceHttpConfigured } from "../src/game/choiceHttpConfig.js";
 import { ARM_ENDPOINTS } from "../src/game/armEndpoints.js";
 
-test("both POLSL arms use the same-origin relay with server credentials", () => {
-  for (const arm of ["alice", "bob"]) {
-    for (const protocol of ["http:", "https:"]) {
-      const location = new URL(`${protocol}//game.example/?ChoiceArm=${arm}&ChoicePlayerId=p`);
-      const config = readChoiceHttpConfig({ location, runtime: { apiKey: "key" }, env: {} });
-      assert.equal(config.endpoint, `${location.origin}/api/arm?arm=${arm}`);
-      assert.equal(config.playerId, "p");
-      const explicit = readChoiceHttpConfig({ location, runtime: { endpoint: ARM_ENDPOINTS[arm] }, env: {} });
-      assert.equal(explicit.endpoint, config.endpoint);
-    }
-  }
-  assert.equal(readChoiceHttpConfig({location: new URL("https://game.example/?ChoiceArm=unknown"), runtime: {}, env: {}}).endpoint, "");
+test("portal body selects a server relay without exposing a key", () => {
+  const launch = {playerId:"p",armEndpoint:ARM_ENDPOINTS.bob};
+  const config = readChoiceHttpConfig({location:new URL("https://game.example/"),launch});
+  assert.equal(config.endpoint,`https://game.example/api/arm?armEndpoint=${encodeURIComponent(launch.armEndpoint)}`);
+  assert.equal(config.playerId,"p");
+  assert.equal(config.gameId,"goldminer");
+  assert.equal(config.apiKey,"");
 });
 
 function response() {
@@ -29,7 +24,7 @@ test("relay launches need portal identity but no browser API key", (t) => {
     if (previous) Object.defineProperty(globalThis, "location", previous);
     else delete globalThis.location;
   });
-  const config = readChoiceHttpConfig({location: new URL("https://game.example/?ChoiceArm=alice&ChoicePlayerId=participant"), runtime: {}, env: {}});
+  const config = readChoiceHttpConfig({location: new URL("https://game.example/"), launch: {playerId:"participant",armEndpoint:ARM_ENDPOINTS.alice}});
   assert.equal(config.apiKey, "");
   assert.equal(isChoiceHttpConfigured(config), true);
   assert.equal(isChoiceHttpConfigured({...config,playerId:""}), false);

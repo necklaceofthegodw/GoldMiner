@@ -4,6 +4,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { createMinerNickHandler } from "./api/miner-nick.js";
 import { createArmHandler } from "./api/arm.js";
+import launchHandler from "./api/launch.js";
 
 const CSV_LOG_DIRECTORY = "logs";
 const DECISION_CSV_LOG_FILENAME = "decisions.csv";
@@ -152,12 +153,14 @@ function decisionCsvPlugin(token, env) {
   return {
     name: "decision-csv-plugin",
     configureServer(server) {
+      server.middlewares.use("/api/launch", launchHandler);
       server.middlewares.use("/api/arm", armHandler);
       server.middlewares.use("/api/miner-nick", createMinerNickHandler(token));
       server.middlewares.use("/api/decision-log", createDecisionLogMiddleware(server.config.root));
       server.middlewares.use("/api/decision-log-csv", createDecisionLogCsvReadMiddleware(server.config.root));
     },
     configurePreviewServer(server) {
+      server.middlewares.use("/api/launch", launchHandler);
       server.middlewares.use("/api/arm", armHandler);
       server.middlewares.use("/api/miner-nick", createMinerNickHandler(token));
       server.middlewares.use("/api/decision-log", createDecisionLogMiddleware(server.config.root));

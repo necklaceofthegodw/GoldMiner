@@ -5,7 +5,10 @@ export function createArmHandler(fetchImpl = globalThis.fetch, env = process.env
   return async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     const query = new URL(req.url, "http://localhost").searchParams;
-    const arm = query.get("arm");
+    const requestedEndpoint = query.get("armEndpoint");
+    const arm = requestedEndpoint
+      ? Object.keys(ARM_ENDPOINTS).find((name) => (env[`ARM_${name.toUpperCase()}_URL`] || ARM_ENDPOINTS[name]) === requestedEndpoint)
+      : query.get("arm");
     const health = query.get("resource") === "health";
     if (!Object.hasOwn(ARM_ENDPOINTS, arm)) {
       res.statusCode = 400;
@@ -20,7 +23,7 @@ export function createArmHandler(fetchImpl = globalThis.fetch, env = process.env
     }
     const headers = {};
     const prefix = `ARM_${arm.toUpperCase()}`;
-    const configuredUrl = env[`${prefix}_URL`] || ARM_ENDPOINTS[arm];
+    const configuredUrl = requestedEndpoint || env[`${prefix}_URL`] || ARM_ENDPOINTS[arm];
     if (!health) {
       const apiKey = env[`${prefix}_API_KEY`]?.trim();
       if (apiKey) headers["x-api-key"] = apiKey;

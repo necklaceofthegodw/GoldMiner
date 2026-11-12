@@ -294,13 +294,18 @@ body {
 }
 
 .slot-screen {
+  position: relative;
+  z-index: 2;
+  background: linear-gradient(160deg, #352713, #171c27);
+  color: #fff2cf;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   text-align: center;
   gap: 1rem;
-  padding: 2rem;
+  padding: clamp(1rem, 3vw, 2rem);
+  overflow-y: auto;
 }
 
 .slot-screen h1 { color: #f8d468; }

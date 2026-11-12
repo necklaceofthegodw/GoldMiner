@@ -38,6 +38,9 @@ function App() {
   const summaryTimerRef = useRef(0);
   const startingRunRef = useRef(false);
   const nickPromiseRef = useRef(null);
+  const experimentSummaryRef = useRef({ maxLevel: 0, money: 0 });
+  const returningToPortalRef = useRef(false);
+  const [experimentSummary, setExperimentSummary] = useState({ maxLevel: 0, money: 0 });
   const [slot] = useState(() => readExperimentSlot());
   const [slotStatus, setSlotStatus] = useState(() => getSlotStatus(slot));
   const [slotSeconds, setSlotSeconds] = useState(0);
@@ -46,6 +49,17 @@ function App() {
     const sync = () => {
       const now = Date.now();
       setSlotStatus(getSlotStatus(slot, now));
+      if (slot && !slot.invalid && now >= slot.stopAt) {
+        const summary = experimentSummaryRef.current;
+        setExperimentSummary((previous) => previous.maxLevel === summary.maxLevel && previous.money === summary.money ? previous : { ...summary });
+      }
+      if (slot && !slot.invalid && now >= slot.endAt) {
+        if (!returningToPortalRef.current) {
+          returningToPortalRef.current = true;
+          window.location.replace(slot.portalEndpoint);
+        }
+        return;
+      }
       if (slot && !slot.invalid) setSlotSeconds(Math.max(0, Math.ceil((slot.startAt - now) / 1000)));
     };
     sync();
@@ -113,7 +127,12 @@ function App() {
         return;
       }
 
+      const moneyBefore = engine.money;
       updateEngine(engine, delta);
+      if (hasEnteredGame) {
+        experimentSummaryRef.current.money += Math.max(0, engine.money - moneyBefore);
+        experimentSummaryRef.current.maxLevel = Math.max(experimentSummaryRef.current.maxLevel, engine.levelIndex + 1);
+      }
       drawEngine(context, engine);
 
       const soundEvents = consumeAudioEvents(engine);
@@ -158,7 +177,7 @@ function App() {
     drawEngine(context, engine);
     frameHandle = window.requestAnimationFrame(animate);
     return () => window.cancelAnimationFrame(frameHandle);
-  }, [audio, engine, slot]);
+  }, [audio, engine, slot, hasEnteredGame]);
 
   useEffect(() => {
     const persist = () => saveGameSave(getSaveData(engine));
@@ -254,6 +273,7 @@ function App() {
       startDecisionSession(nick);
       resetProgress(engine);
       startLevel(engine, 1);
+      experimentSummaryRef.current.maxLevel = Math.max(1, experimentSummaryRef.current.maxLevel);
       setHasEnteredGame(true);
       setShowLevelSummary(false);
       refreshSnapshot(true);
@@ -266,7 +286,7 @@ function App() {
   }, [engine, refreshSnapshot, requestFullscreen, requestLandscapeLock, slot]);
 
   useEffect(() => {
-    if (hasEnteredGame || slotStatus === "ended" || slotStatus === "invalid") return undefined;
+    if (hasEnteredGame || ["ended", "invalid", "summary"].includes(slotStatus)) return undefined;
     // Reserve during countdown; reuse the request across StrictMode effect replay.
     nickPromiseRef.current ??= allocateMinerNick();
     void nickPromiseRef.current.catch(() => {});
@@ -355,7 +375,13 @@ function App() {
       {canPlay && startError && <p className="start-error" role="alert">{startError}</p>}
       {!canPlay && (
         <section className="scene-panel slot-screen" aria-live="polite">
-          <h1>{slotStatus === "ended" ? "Thank you for participating!" : slotStatus === "invalid" ? "Invalid experiment slot" : "Waiting for your game"}</h1>
+          <h1>{["ended", "summary"].includes(slotStatus) ? "Thank you for participating!" : slotStatus === "invalid" ? "Invalid experiment slot" : "Waiting for your game"}</h1>
+          {slotStatus === "summary" && <>
+            <h2>Game Summary</h2>
+            <p>Maximum level reached: <strong>{experimentSummary.maxLevel}</strong></p>
+            <p>Money earned: <strong>{formatMoney(experimentSummary.money)}</strong></p>
+            <p>You will return to the portal automatically at the end of your slot.</p>
+          </>}
           {slotStatus === "waiting" && <>
             <p>Your game will start automatically at {new Date(slot.startAt).toLocaleTimeString()}.</p>
             <p role="timer">Starting in {Math.floor(slotSeconds / 60)}:{String(slotSeconds % 60).padStart(2, "0")}</p>

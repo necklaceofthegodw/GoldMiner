@@ -250,18 +250,11 @@ test("missing API configuration sends nothing, with no fallback to Vercel Blob",
   }
 });
 
-test("portal launch parameters keep the exact endpoint and consume only the fragment credential", () => {
-  const replaced = [];
-  const location = new URL("https://game.example/?ChoiceUrl=https%3A%2F%2Farm.example%2Fcustom%2Farm%2F&ChoicePlayerId=portal-player&ChoiceGameId=goldminer#ChoiceApiKey=runtime-secret&other=keep");
-  const result = readChoiceHttpConfig({
-    location, history: { state: {}, replaceState: (...args) => replaced.push(args) },
-    runtime: {}, env: { VITE_GOLDMINER_CHOICE_URL: "https://default.example/" },
-  });
-  assert.deepEqual(result, { ...config, apiKey: "runtime-secret" });
-  assert.ok(isChoiceHttpConfigured(result));
-  assert.equal(replaced.length, 1);
-  assert.ok(!replaced[0][2].includes("runtime-secret"));
-  assert.ok(replaced[0][2].endsWith("#other=keep"));
+test("legacy portal query and fragment parameters are ignored", () => {
+  const config = readChoiceHttpConfig({location:new URL("https://game.example/?ChoicePlayerId=old&ChoiceUrl=https://old.example/#ChoiceApiKey=old"),launch:null,runtime:{}});
+  assert.equal(config.endpoint,"");
+  assert.equal(config.playerId,"");
+  assert.equal(config.apiKey,"");
 });
 
 test("launch validation rejects public HTTP and invalid headers; no API key from build/query", () => {
