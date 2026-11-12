@@ -70,7 +70,8 @@ from the experiment portal.
 Every decision starts a separate POST immediately when its event is consumed by
 the game loop. There is no batching or waiting for a level/run to finish. One
 request is in flight at a time, as in Batyskaf. The configured URL is the complete
-endpoint: its path and trailing slash are preserved, without an appended suffix.
+endpoint: its path and trailing slash are preserved, without an appended suffix
+(the two known POLSL addresses use the server relay below).
 The frontend no longer sends decisions or run summaries to Vercel Blob.
 
 ```http
@@ -109,7 +110,8 @@ The browser equivalent of Batyskaf's launch arguments is:
 
 | Setting | URL query parameter | Public build default |
 | --- | --- | --- |
-| Complete HTTPS endpoint | `ChoiceUrl` | `VITE_GOLDMINER_CHOICE_URL` |
+| Complete endpoint | `ChoiceUrl` | `VITE_GOLDMINER_CHOICE_URL` |
+| POLSL arm: `alice` or `bob` | `ChoiceArm` | `VITE_GOLDMINER_ARM` |
 | Game identifier | `ChoiceGameId` | `VITE_GOLDMINER_GAME_ID` (default `goldminer`) |
 | Participant identifier | `ChoicePlayerId` | `VITE_GOLDMINER_PLAYER_ID` |
 
@@ -118,6 +120,10 @@ UUID. Neither the nickname nor a generated UUID substitutes for the portal ID.
 URL parameters override `window.GOLDMINER_CHOICE_CONFIG`, which overrides Vite
 defaults. `.env.example` contains the public defaults; use `.env.local` locally.
 Use one endpoint per launch, pointing to the arm assigned by the portal.
+
+For Alice/Bob, use server-side `.env` credentials as described below; no browser
+API key is required. The following runtime-credential options apply to custom
+direct HTTPS endpoints.
 
 Credentials are runtime-only. Do not put the API key in `VITE_*` variables, source
 code or query parameters. The portal integration may supply an API-supported
@@ -149,10 +155,58 @@ window.GOLDMINER_CHOICE_CONFIG = {
 };
 ```
 
-If the endpoint, portal player ID or key is missing/invalid, HTTP is disabled with
+For direct custom endpoints, if the endpoint, portal player ID or key is missing/invalid, HTTP is disabled with
 a browser-console error on run start; decisions remain in the local detail log.
-Production endpoints must use HTTPS. HTTP is accepted only for loopback testing
-from a non-HTTPS page (`localhost`, `127.0.0.1`, `::1`).
+Custom production endpoints must use HTTPS. HTTP is also accepted for loopback
+testing from a non-HTTPS page, and for the two fixed POLSL destinations below.
+
+### POLSL Alice / Bob
+
+| Arm | Decision POST | Health GET |
+| --- | --- | --- |
+| Alice | `http://157.158.83.183:8001/api/v1/data` | `http://157.158.83.183:8001/api/v1/health` |
+| Bob | `http://157.158.83.183:8002/api/v1/data` | `http://157.158.83.183:8002/api/v1/health` |
+
+Portal launch examples (replace the player ID with its portal value):
+
+```text
+https://game.example/?ChoiceArm=alice&ChoicePlayerId=participant-123
+https://game.example/?ChoiceArm=bob&ChoicePlayerId=participant-456
+```
+
+There is no default arm: the portal must select one, or set `VITE_GOLDMINER_ARM`
+to `alice` or `bob` in `.env.local` / Vercel environment settings. An explicit
+`ChoiceUrl` or configured endpoint takes precedence over the arm profile.
+`X-Game-ID` defaults to `goldminer`; `X-Player-ID` is supplied by the portal.
+The email's `very-secret-api-key` is a placeholder, not a configured credential.
+
+Configure `.env` in the project root using the same backend variables as BatyskafWeb:
+
+```dotenv
+ARM_ALICE_URL=http://157.158.83.183:8001/api/v1/data
+ARM_ALICE_API_KEY=
+ARM_BOB_URL=http://157.158.83.183:8002/api/v1/data
+ARM_BOB_API_KEY=
+```
+
+Fill in the real keys from the equipment administrator, then restart Vite.
+The local `.env` is ignored by Git; `.env.example` is the shareable template.
+For Vercel, set these same variables in the deployment environment settings.
+Changing one project's `.env` does not automatically update the other project.
+
+Both HTTP and HTTPS launches use `POST /api/arm?arm=alice` (or `bob`) on the
+game server. The backend reads the selected URL and API key from its environment,
+and adds `X-API-Key`; the portal needs only the arm and participant ID.
+Arm credentials are never included in the frontend bundle or launch URL.
+The relay forwards one decision at a time without storage, batching or retries.
+This adds a network hop and avoids browser mixed-content and arm CORS limitations.
+Vercel functions and Vite dev/preview provide the relay; static-only hosting does not.
+The server must be allowed to reach POLSL. If POLSL blocks Vercel, host the relay
+on a reachable server or arrange network access.
+
+Relay health checks: `GET /api/arm?arm=alice&resource=health` (or `bob`).
+They forward the upstream HTTP status and `ok` text. Health is checked manually;
+it does not delay each decision. Do not test by posting fabricated experiment bits.
 
 ### Receiver requirements and retries
 
@@ -194,7 +248,8 @@ enable it on your actual API before testing from a browser.
 The existing `api/decision-*` handlers remain for access to historical Vercel Blob
 logs (admin access still requires `DECISION_LOG_ADMIN_KEY` and the Blob token).
 The frontend does not call those historical logging endpoints. Only the global
-nickname counter uses Blob; decision events are sent directly to the arm API.
+nickname counter uses Blob; decision events go to the arm API through the relay
+for Alice/Bob, or directly for custom HTTPS endpoints.
 
 ### Verification
 

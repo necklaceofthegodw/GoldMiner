@@ -1,10 +1,18 @@
+import { ARM_ENDPOINTS } from "./armEndpoints.js";
+
 function isHeaderValue(value) {
   return typeof value === "string" && /^[\x20-\x7e]+$/.test(value);
 }
 
 export function isChoiceHttpConfigured(config) {
+  let serverKey = false;
+  try {
+    const url = new URL(config.endpoint);
+    serverKey = url.origin === globalThis.location?.origin && url.pathname === "/api/arm" &&
+      ["alice", "bob"].includes(url.searchParams.get("arm"));
+  } catch { /* Invalid endpoint remains unconfigured. */ }
   return Boolean(config?.endpoint) &&
-    isHeaderValue(config.gameId) && isHeaderValue(config.playerId) && isHeaderValue(config.apiKey);
+    isHeaderValue(config.gameId) && isHeaderValue(config.playerId) && (serverKey || isHeaderValue(config.apiKey));
 }
 
 // Portal parameters override runtime configuration, then public Vite defaults.
@@ -24,10 +32,15 @@ export function readChoiceHttpConfig({
     // Consume the launch credential once. It stays in memory, not in saved URLs.
     history?.replaceState(history.state, "", `${location.pathname}${location.search}${remaining ? `#${remaining}` : ""}`);
   }
-  const endpoint = String(query.get("ChoiceUrl") ?? runtime.endpoint ?? env.VITE_GOLDMINER_CHOICE_URL ?? "").trim();
+  const arm = String(query.get("ChoiceArm") ?? runtime.arm ?? env.VITE_GOLDMINER_ARM ?? "").trim().toLowerCase();
+  const endpoint = String(query.get("ChoiceUrl") ?? runtime.endpoint ?? (env.VITE_GOLDMINER_CHOICE_URL || ARM_ENDPOINTS[arm]) ?? "").trim();
   let validEndpoint = "";
   try {
     const url = new URL(endpoint);
+    const knownArm = Object.keys(ARM_ENDPOINTS).find((name) => ARM_ENDPOINTS[name] === endpoint);
+    if (knownArm && ["http:", "https:"].includes(location?.protocol)) {
+      validEndpoint = `${location.origin}/api/arm?arm=${knownArm}`;
+    }
     const localHttp = url.protocol === "http:" &&
       ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) && location?.protocol !== "https:";
     if ((url.protocol === "https:" || localHttp) && !url.username && !url.password &&

@@ -3,6 +3,7 @@ import path from "node:path";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { createMinerNickHandler } from "./api/miner-nick.js";
+import { createArmHandler } from "./api/arm.js";
 
 const CSV_LOG_DIRECTORY = "logs";
 const DECISION_CSV_LOG_FILENAME = "decisions.csv";
@@ -146,15 +147,18 @@ function createDecisionLogCsvReadMiddleware(rootPath) {
   };
 }
 
-function decisionCsvPlugin(token) {
+function decisionCsvPlugin(token, env) {
+  const armHandler = createArmHandler(globalThis.fetch, env);
   return {
     name: "decision-csv-plugin",
     configureServer(server) {
+      server.middlewares.use("/api/arm", armHandler);
       server.middlewares.use("/api/miner-nick", createMinerNickHandler(token));
       server.middlewares.use("/api/decision-log", createDecisionLogMiddleware(server.config.root));
       server.middlewares.use("/api/decision-log-csv", createDecisionLogCsvReadMiddleware(server.config.root));
     },
     configurePreviewServer(server) {
+      server.middlewares.use("/api/arm", armHandler);
       server.middlewares.use("/api/miner-nick", createMinerNickHandler(token));
       server.middlewares.use("/api/decision-log", createDecisionLogMiddleware(server.config.root));
       server.middlewares.use("/api/decision-log-csv", createDecisionLogCsvReadMiddleware(server.config.root));
@@ -164,5 +168,5 @@ function decisionCsvPlugin(token) {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  return { plugins: [react(), decisionCsvPlugin(process.env.BLOB_READ_WRITE_TOKEN || env.BLOB_READ_WRITE_TOKEN)] };
+  return { plugins: [react(), decisionCsvPlugin(process.env.BLOB_READ_WRITE_TOKEN || env.BLOB_READ_WRITE_TOKEN, { ...env, ...process.env })] };
 });

@@ -184,7 +184,7 @@ export class ChoiceHttpClient {
           "Content-Type": "application/json",
           "X-Game-ID": this.config.gameId,
           "X-Player-ID": this.config.playerId,
-          "X-API-Key": this.config.apiKey,
+          ...(this.config.apiKey ? { "X-API-Key": this.config.apiKey } : {}),
         },
         body: entry.body,
         signal: controller.signal,
