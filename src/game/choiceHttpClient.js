@@ -1,4 +1,5 @@
 import { isChoiceHttpConfigured } from "./choiceHttpConfig.js";
+import { randomUuid } from "./minerIdentity.js";
 
 export const CHOICE_OUTBOX_PREFIX = "goldminer:choice-http:outbox:v1:";
 const REQUEST_TIMEOUT_MS = 5000;
@@ -50,7 +51,7 @@ export class ChoiceHttpClient {
     }
   }
 
-  startSession(sessionId = globalThis.crypto.randomUUID()) {
+  startSession(sessionId = randomUuid()) {
     this.sessionId = sessionId;
     this.nextSequence = 1;
     if (!isChoiceHttpConfigured(this.config)) {

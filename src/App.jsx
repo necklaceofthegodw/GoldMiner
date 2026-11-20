@@ -23,7 +23,7 @@ import {
 } from "./game/decisionLogClient";
 import { GAME_ICON_SOURCES } from "./game/iconSources";
 import { loadGameSave, saveGameSave } from "./game/storage";
-import { allocateMinerNick } from "./game/minerIdentity.js";
+import { createMinerNick } from "./game/minerIdentity.js";
 import { getSlotStatus, readExperimentSlot, slotAllowsPlay } from "./game/experimentSlot.js";
 
 function formatMoney(value) {
@@ -37,7 +37,6 @@ function App() {
   const canvasRef = useRef(null);
   const summaryTimerRef = useRef(0);
   const startingRunRef = useRef(false);
-  const nickPromiseRef = useRef(null);
   const experimentSummaryRef = useRef({ maxLevel: 0, money: 0 });
   const returningToPortalRef = useRef(false);
   const [experimentSummary, setExperimentSummary] = useState({ maxLevel: 0, money: 0 });
@@ -268,28 +267,20 @@ function App() {
       requestLandscapeLock();
     }
     try {
-      const nick = await (nickPromiseRef.current ??= allocateMinerNick());
-      if (!slotAllowsPlay(slot)) return;
-      startDecisionSession(nick);
+      startDecisionSession(createMinerNick());
       resetProgress(engine);
       startLevel(engine, 1);
       experimentSummaryRef.current.maxLevel = Math.max(1, experimentSummaryRef.current.maxLevel);
       setHasEnteredGame(true);
       setShowLevelSummary(false);
       refreshSnapshot(true);
-    } catch {
-      setStartError("Could not reserve your miner name. Check your connection and press PLAY or Start Over to retry.");
     } finally {
-      nickPromiseRef.current = null;
       startingRunRef.current = false;
     }
   }, [engine, refreshSnapshot, requestFullscreen, requestLandscapeLock, slot]);
 
   useEffect(() => {
     if (hasEnteredGame || ["ended", "invalid", "summary"].includes(slotStatus)) return undefined;
-    // Reserve during countdown; reuse the request across StrictMode effect replay.
-    nickPromiseRef.current ??= allocateMinerNick();
-    void nickPromiseRef.current.catch(() => {});
     if (slot) {
       if (slotStatus === "active") void startNewRun({ automatic: true });
       return undefined;

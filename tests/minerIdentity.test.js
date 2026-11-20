@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { allocateGlobalMinerNick } from "../api/_miner-counter.js";
 import { createMinerNickHandler } from "../api/miner-nick.js";
-import { allocateMinerNick } from "../src/game/minerIdentity.js";
+import { createMinerNick, randomUuid } from "../src/game/minerIdentity.js";
 
 test("concurrent participants receive distinct sequential names from shared storage", async () => {
   let current = null;
@@ -43,15 +43,20 @@ test("server requires POST and configured storage, without exposing credentials"
   }
 });
 
-test("browser accepts server names and fails closed on service errors", async (t) => {
-  const fetch = t.mock.method(globalThis, "fetch", async (url, options) => {
-    assert.equal(url, "/api/miner-nick");
-    assert.equal(options.method, "POST");
-    return { ok: true, json: async () => ({ nick: "Miner42" }) };
-  });
-  assert.equal(await allocateMinerNick(), "Miner42");
-  fetch.mock.mockImplementation(async () => ({ ok: false }));
-  await assert.rejects(allocateMinerNick());
-  fetch.mock.mockImplementation(async () => ({ ok: true, json: async () => ({ nick: "Miner0" }) }));
-  await assert.rejects(allocateMinerNick());
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+test("browser creates unique UUID nicks locally without the network", (t) => {
+  const fetch = t.mock.method(globalThis, "fetch", async () => assert.fail("Nick must not use the network"));
+  const nicks = Array.from({ length: 100 }, () => createMinerNick());
+  for (const nick of nicks) assert.match(nick, UUID_V4);
+  assert.equal(new Set(nicks).size, nicks.length);
+  assert.equal(fetch.mock.callCount(), 0);
+});
+
+test("UUID falls back to getRandomValues when randomUUID is unavailable (plain HTTP)", () => {
+  const insecureCrypto = { getRandomValues: (array) => globalThis.crypto.getRandomValues(array) };
+  const ids = Array.from({ length: 100 }, () => randomUuid(insecureCrypto));
+  for (const id of ids) assert.match(id, UUID_V4);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.equal(randomUuid({ getRandomValues: (array) => array.fill(0xff) }), "ffffffff-ffff-4fff-bfff-ffffffffffff");
 });
