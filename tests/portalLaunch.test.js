@@ -4,7 +4,7 @@ import launchHandler from "../api/launch.js";
 import { validatePortalLaunch } from "../src/game/portalLaunch.js";
 import { createArmHandler } from "../api/arm.js";
 
-const launch = {playerId:"participant",armEndpoint:"http://157.158.83.183:8001/api/v1/data",portalEndpoint:"https://portal.example/return",startAt:"2026-11-12T12:00:00Z",endAt:"2026-11-12T12:10:00Z"};
+const launch = {playerId:"participant",armEndpoint:"http://157.158.83.183:8001/api/v1/data",returnEndpoint:"https://portal.example/return",startAt:"2026-11-12T12:00:00Z",endAt:"2026-11-12T12:10:00Z"};
 function response() {return {setHeader(){},end(body){this.body=body;}};}
 
 test("POST launch accepts exactly the five portal fields as JSON or a navigation form",async()=>{
@@ -18,7 +18,7 @@ test("POST launch accepts exactly the five portal fields as JSON or a navigation
 });
 
 test("invalid or incomplete launches fail and cannot inject HTML",async()=>{
-  for(const body of [{...launch,playerId:""},{...launch,portalEndpoint:"javascript:alert(1)"},{...launch,endAt:launch.startAt},{...launch,startAt:"bad"}]) {
+  for(const body of [{...launch,playerId:""},{...launch,returnEndpoint:"javascript:alert(1)"},{...launch,endAt:launch.startAt},{...launch,startAt:"bad"}]) {
     const res=response();await launchHandler({method:"POST",body,headers:{}},res);assert.equal(res.statusCode,400);
   }
   const res=response();

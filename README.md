@@ -86,7 +86,7 @@ form that POSTs the five launch fields to `<server>/api/launch`:
 - `server` – game server address (default `http://localhost:4173`), not sent in the POST.
 - `startAt` / `endAt` – prefilled to now +1 min / now +3 min (a 2-minute slot starting
   in 1 minute). Click **now +1 / +3 min** to recalculate before submitting.
-- `playerId`, `armEndpoint`, `portalEndpoint` – editable test values.
+- `playerId`, `armEndpoint`, `returnEndpoint` – editable test values.
 
 Without a portal launch, opening the game URL directly starts standalone play
 after a five-second countdown.
@@ -100,7 +100,7 @@ The body contains only these five fields:
 {
   "playerId": "participant-123",
   "armEndpoint": "http://157.158.83.183:8001/api/v1/data",
-  "portalEndpoint": "https://portal.example/",
+  "returnEndpoint": "https://portal.example/",
   "startAt": "2026-11-13T12:00:00Z",
   "endAt": "2026-11-13T12:10:00Z"
 }
@@ -120,7 +120,7 @@ At **`endAt - 10 seconds`**, gameplay and generation of new decisions stop and a
 summary shows the maximum level reached and total money collected during this
 slot, including unfinished levels and runs before a restart. Shop purchases do
 not subtract from the amount earned. At **`endAt`**, the browser automatically
-navigates to `portalEndpoint`; no results POST is sent to the portal.
+navigates to `returnEndpoint`; no results POST is sent to the portal.
 Opening an expired slot immediately returns to the portal. Checks also run in
 input handlers and the game loop to prevent play after a background tab resumes.
 Timing uses the participant computer's clock; clocks must be synchronized.

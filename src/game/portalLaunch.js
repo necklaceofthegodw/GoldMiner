@@ -11,7 +11,7 @@ export function validatePortalLaunch(data) {
     if (typeof value !== "string" || !/(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) throw new Error("Invalid date");
     return new Date(value).toISOString();
   };
-  const launch = { playerId: data.playerId.trim(), armEndpoint: endpoint(data.armEndpoint), portalEndpoint: endpoint(data.portalEndpoint), startAt: date(data.startAt), endAt: date(data.endAt) };
+  const launch = { playerId: data.playerId.trim(), armEndpoint: endpoint(data.armEndpoint), returnEndpoint: endpoint(data.returnEndpoint), startAt: date(data.startAt), endAt: date(data.endAt) };
   if (Date.parse(launch.endAt) - Date.parse(launch.startAt) <= 10000) throw new Error("Slot must exceed 10 seconds");
   return launch;
 }

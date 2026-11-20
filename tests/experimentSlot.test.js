@@ -4,7 +4,7 @@ import { readExperimentSlot, getSlotStatus, slotAllowsPlay } from "../src/game/e
 
 const start = "2026-11-12T12:00:00Z";
 const end = "2026-11-12T12:10:00Z";
-const location = (startAt, endAt) => ({startAt,endAt,portalEndpoint:"https://portal.example/"});
+const location = (startAt, endAt) => ({startAt,endAt,returnEndpoint:"https://portal.example/"});
 
 test("portal slot waits, opens exactly at start and closes exactly at end", () => {
   const slot = readExperimentSlot(location(start,end));

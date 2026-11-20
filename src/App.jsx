@@ -55,7 +55,7 @@ function App() {
       if (slot && !slot.invalid && now >= slot.endAt) {
         if (!returningToPortalRef.current) {
           returningToPortalRef.current = true;
-          window.location.replace(slot.portalEndpoint);
+          window.location.replace(slot.returnEndpoint);
         }
         return;
       }

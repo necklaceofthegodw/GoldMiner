@@ -7,7 +7,7 @@ export function readExperimentSlot(launch = readPortalLaunch()) {
   const startAt = Date.parse(launch.startAt);
   const endAt = Date.parse(launch.endAt);
   return Number.isFinite(startAt) && Number.isFinite(endAt) && endAt - startAt > 10000
-    ? { startAt, endAt, stopAt: endAt - 10000, portalEndpoint: launch.portalEndpoint } : { invalid: true };
+    ? { startAt, endAt, stopAt: endAt - 10000, returnEndpoint: launch.returnEndpoint } : { invalid: true };
 }
 
 export function getSlotStatus(slot, now = Date.now()) {
