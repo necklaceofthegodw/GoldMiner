@@ -45,7 +45,7 @@ export const SHOP_ITEMS = [
     name: "Turbo Winch",
     description: "Permanent: hook retract speed +12% per level.",
     category: "upgrade",
-    shopIcon: "https://cdn-icons-png.flaticon.com/512/4721/4721089.png",
+    shopIcon: "/assets/icons/turbo-winch.png",
     baseCost: 320,
     costStep: 220,
     maxLevel: 3,
@@ -75,7 +75,7 @@ export const SHOP_ITEMS = [
     name: "Pocket Battery",
     description: "Consumable: next level starts with +10s.",
     category: "consumable",
-    shopIcon: "https://cdn-icons-png.flaticon.com/512/17742/17742561.png",
+    shopIcon: "/assets/icons/time-boost.png",
     cost: 260,
   },
 ];
