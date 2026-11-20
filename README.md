@@ -45,6 +45,52 @@ npm run build
 npm run preview
 ```
 
+## Offline Deployment (Windows laptops without internet)
+
+The game runs fully offline from `vite preview`: all assets are bundled locally and
+the local API routes (`/api/launch`, `/api/arm`, `/api/decision-log`) are served by
+the preview server. Decisions sent to an unreachable arm stay queued in the browser's
+localStorage outbox and are retried.
+
+### 1. Prepare (on a machine with internet)
+
+- Install **Node.js 26 LTS** (minimum supported: 20.19+ or 22.12+, required by Vite 8).
+  Download the Windows `.msi` installer from https://nodejs.org so it can also be
+  installed on the offline laptops.
+- In the project folder, install dependencies and build:
+
+  ```bash
+  npm ci
+  npm run build
+  ```
+
+- Copy the **whole project folder, including `node_modules` and `dist`**, to each laptop.
+  Without `node_modules`, `npx` would try to download packages and fail offline.
+
+### 2. Run (on the offline laptop)
+
+Double-click **`start.bat`**. It checks that Node.js and `node_modules` are present,
+builds `dist` if missing, and starts the server at `http://localhost:4173`
+(it does not open a browser). Close the window or press Ctrl+C to stop it.
+Decision CSV logs are written to the `logs/` folder of the project.
+
+To let another computer in the local network connect, add `--host` at the end of the
+`vite preview` line in `start.bat`, open `http://<server-IP>:4173` on the other
+computer, and allow Node.js in Windows Firewall (private network) when prompted.
+
+### 3. Test a portal launch
+
+Open **`portal_launch_test.html`** in a browser (directly from disk). It is a minimal
+form that POSTs the five launch fields to `<server>/api/launch`:
+
+- `server` – game server address (default `http://localhost:4173`), not sent in the POST.
+- `startAt` / `endAt` – prefilled to now +1 min / now +3 min (a 2-minute slot starting
+  in 1 minute). Click **now +1 / +3 min** to recalculate before submitting.
+- `playerId`, `armEndpoint`, `portalEndpoint` – editable test values.
+
+Without a portal launch, opening the game URL directly starts standalone play
+after a five-second countdown.
+
 ## Portal launch and decision API
 
 The portal navigates the participant browser by **POST to `/api/launch`**.
@@ -68,8 +114,8 @@ not open the participant's game: the returned HTML must run in their browser.
 The response stores the launch in this tab's sessionStorage and navigates to `/`.
 Invalid launches return HTTP 400. Old `Choice*` URL parameters are no longer read.
 
-The waiting room blocks controls before `startAt`, then starts automatically once
-the globally unique nickname is ready. Joining an active slot starts immediately.
+The waiting room blocks controls before `startAt`, then starts automatically.
+Joining an active slot starts immediately.
 At **`endAt - 10 seconds`**, gameplay and generation of new decisions stop and a
 summary shows the maximum level reached and total money collected during this
 slot, including unfinished levels and runs before a restart. Shop purchases do
@@ -121,14 +167,12 @@ request at a time; timeouts, network errors, 408, 429 and 5xx retry with backoff
 Retries can duplicate deliveries if an ACK was lost; receivers should deduplicate
 by session_id + sequence. Nicknames are local log metadata, not portal player IDs.
 
-### Global nicknames
+### Nicknames
 
-No nickname input is shown. `POST /api/miner-nick` reserves Miner1, Miner2, ...
-using a shared private Blob counter with atomic conditional writes. Configure
-`BLOB_READ_WRITE_TOKEN` with the same store on deployments sharing the sequence.
-Do not delete `miner-identity/global-counter-v1.json`. Abandoned launches can leave
-gaps. Normally one counter read/write is needed per nickname, never per decision.
-If name reservation fails, start waits for retry rather than reusing a name.
+No nickname input is shown. Each run gets a random UUID nickname generated in the
+browser (`src/game/minerIdentity.js`), with a `crypto.getRandomValues` fallback so it
+also works over plain HTTP. It is only used in the local decision log. The
+`/api/miner-nick` counter endpoint still exists but is no longer used by the client.
 
 ### Verification
 
@@ -160,7 +204,7 @@ On Vercel:
 
 ## Icon Attribution
 
-The gameplay/shop icons use these external assets (Flaticon free use with attribution):
+The gameplay/shop icons use these Flaticon assets (free use with attribution), bundled locally in `public/assets/icons/`:
 
 - Gold Nugget: https://www.flaticon.com/free-icon/gold-nugget_7969089
 - Stone: https://www.flaticon.com/free-icon/stone_4746599
