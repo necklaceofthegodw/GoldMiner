@@ -48,7 +48,7 @@ npm run preview
 ## Offline Deployment (Windows laptops without internet)
 
 The game runs fully offline from `vite preview`: all assets are bundled locally and
-the local API routes (`/api/launch`, `/api/arm`, `/api/decision-log`) are served by
+the local API routes (`<prefix>/api/launch`, `<prefix>/api/arm`, `<prefix>/api/decision-log`) are served by
 the preview server. Decisions sent to an unreachable arm stay queued in the browser's
 localStorage outbox and are retried.
 
@@ -71,12 +71,12 @@ localStorage outbox and are retried.
 
 Double-click **`start.bat`** in the copied folder. It uses the bundled `node\node.exe`
 (falling back to a system Node.js), checks that `node_modules` is present,
-builds `dist` if missing, and starts the server at `http://localhost:4173`
+builds `dist` if missing, and starts the server at `http://localhost:4173/game/goldminer/`
 (it does not open a browser). Close the window or press Ctrl+C to stop it.
 Decision CSV logs are written to the `logs/` folder next to `start.bat`.
 
 To let another computer in the local network connect, add `--host` at the end of the
-`vite preview` line in `start.bat`, open `http://<server-IP>:4173` on the other
+`vite preview` line in `start.bat`, open `http://<server-IP>:4173/game/goldminer/` on the other
 computer, and allow Node.js in Windows Firewall (private network) when prompted.
 
 ### 3. Test a portal launch
@@ -84,7 +84,8 @@ computer, and allow Node.js in Windows Firewall (private network) when prompted.
 Open **`portal_launch_test.html`** in a browser (directly from disk). It is a minimal
 form that POSTs the five launch fields to `<server>/api/launch`:
 
-- `server` – game server address (default `http://localhost:4173`), not sent in the POST.
+- `server` – game address including the prefix (default `http://localhost:4173/game/goldminer`;
+  through a proxy e.g. `https://host/game/goldminer`), not sent in the POST.
 - `startAt` / `endAt` – prefilled to now +1 min / now +3 min (a 2-minute slot starting
   in 1 minute). Click **now +1 / +3 min** to recalculate before submitting.
 - `playerId`, `armEndpoint`, `returnEndpoint` – editable test values.
@@ -92,9 +93,36 @@ form that POSTs the five launch fields to `<server>/api/launch`:
 Without a portal launch, opening the game URL directly starts standalone play
 after a five-second countdown.
 
+## URL prefix and reverse proxy
+
+The whole app (page, assets, service worker, manifest and `/api/*` routes) lives under a
+configurable prefix, by default **`/game/goldminer`** – e.g. `http://localhost:4173/game/goldminer/`
+and `http://localhost:4173/game/goldminer/api/launch`. Set it in `.env` (or the environment):
+
+```dotenv
+BASE_PATH=/game/goldminer   # "/" = no prefix (old behaviour)
+BASE_PATH_STRIPPED=false    # true = the proxy removes the prefix before forwarding
+```
+
+- `BASE_PATH` is baked into the build. After changing it, delete `dist` (start.bat rebuilds it)
+  or run `npm run build`. `vite preview` refuses to start with a build made for another prefix.
+- `BASE_PATH_STRIPPED` only affects the server; change it and restart, no rebuild needed.
+  Browsers always see prefixed URLs, so the build is the same for both proxy modes.
+
+| Proxy behaviour | Example (nginx) | `BASE_PATH_STRIPPED` |
+| --- | --- | --- |
+| Keeps the prefix: `/game/goldminer/x` → backend `/game/goldminer/x` | `location /game/goldminer/ { proxy_pass http://127.0.0.1:4173; }` | `false` (default) |
+| Strips the prefix: `/game/goldminer/x` → backend `/x` | `location /game/goldminer/ { proxy_pass http://127.0.0.1:4173/; }` | `true` |
+
+With `false`, a bare `/` redirects to the prefix and unprefixed paths return 404. With `true`,
+the server adds the prefix back to every incoming path that lacks it. The launch response
+navigates relatively (`../` from `<prefix>/api/launch`), so it works in both modes.
+The startup log prints `Gold Miner base: /game/goldminer/ (proxy strips prefix: no)`.
+
 ## Portal launch and decision API
 
-The portal navigates the participant browser by **POST to `/api/launch`**.
+The portal navigates the participant browser by **POST to `<prefix>/api/launch`**
+(default `https://GAME/game/goldminer/api/launch`).
 The body contains only these five fields:
 
 ```json
@@ -109,10 +137,10 @@ The body contains only these five fields:
 
 Dates use ISO 8601 with a timezone (UTC `Z` recommended). The interval must exceed
 10 seconds. JSON and `application/x-www-form-urlencoded` are accepted. For browser
-navigation, submit an HTML form with `method="post"`, `action="https://GAME/api/launch"`
+navigation, submit an HTML form with `method="post"`, `action="https://GAME/game/goldminer/api/launch"`
 and five hidden inputs. A background server-to-server POST or fetch alone will
 not open the participant's game: the returned HTML must run in their browser.
-The response stores the launch in this tab's sessionStorage and navigates to `/`.
+The response stores the launch in this tab's sessionStorage and navigates to `<prefix>/`.
 Invalid launches return HTTP 400. Old `Choice*` URL parameters are no longer read.
 
 The waiting room blocks controls before `startAt`, then starts automatically.
@@ -141,7 +169,7 @@ BLOB_READ_WRITE_TOKEN=
 `.env` is ignored by Git. `.env.example` is the template. Restart Vite after edits;
 on Vercel set these variables in project settings and deploy. Arm API keys stay
 on the backend and are included as `X-API-Key` when set. The game ID is `goldminer`.
-The browser forwards decisions through `/api/arm?armEndpoint=...`, using the exact
+The browser forwards decisions through `<prefix>/api/arm?armEndpoint=...`, using the exact
 portal destination. To prevent an open proxy, that destination must match one
 of `ARM_ALICE_URL` / `ARM_BOB_URL` (defaults above); unknown destinations are rejected.
 There is no extra arm name, game ID or API key required from the portal.
@@ -179,7 +207,7 @@ also works over plain HTTP. It is only used in the local decision log. The
 
 `npm test`, `npm run lint`, `npm run build`.
 Manual arm health checks (no experimental bits sent):
-`GET /api/arm?arm=alice&resource=health` or `arm=bob`.
+`GET <prefix>/api/arm?arm=alice&resource=health` or `arm=bob`.
 Tests use mocked receivers and never send bits to production arms.
 
 ## PWA Notes
@@ -198,7 +226,8 @@ This repo includes `vercel.json` with:
 
 On Vercel:
 
-1. Import the repository.
+1. Import the repository. Set `BASE_PATH=/` in the project environment variables
+   (`vercel.json` routes and the functions in `api/` serve the app at the root).
 2. Build command: `npm run build`
 3. Output directory: `dist`
 4. Deploy.

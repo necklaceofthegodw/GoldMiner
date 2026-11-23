@@ -1,5 +1,6 @@
 import { GAME_LEVELS, createSeededRandom, generateLevel } from "./levels";
 import { GAME_ICON_SOURCES } from "./iconSources";
+import { appUrl } from "./basePath.js";
 
 export const GAME_WIDTH = 960;
 export const GAME_HEIGHT = 540;
@@ -45,7 +46,7 @@ export const SHOP_ITEMS = [
     name: "Turbo Winch",
     description: "Permanent: hook retract speed +12% per level.",
     category: "upgrade",
-    shopIcon: "/assets/icons/turbo-winch.png",
+    shopIcon: appUrl("/assets/icons/turbo-winch.png"),
     baseCost: 320,
     costStep: 220,
     maxLevel: 3,
@@ -55,7 +56,7 @@ export const SHOP_ITEMS = [
     name: "Precision Claw",
     description: "Permanent: hook hit radius +1.4 per level.",
     category: "upgrade",
-    shopIcon: "/assets/icons/claw-machine.png",
+    shopIcon: appUrl("/assets/icons/claw-machine.png"),
     baseCost: 300,
     costStep: 200,
     maxLevel: 3,
@@ -65,7 +66,7 @@ export const SHOP_ITEMS = [
     name: "Mystery Scanner",
     description: "Permanent: mystery crates roll stronger outcomes.",
     category: "upgrade",
-    shopIcon: "/assets/icons/mystery-crate.svg",
+    shopIcon: appUrl("/assets/icons/mystery-crate.svg"),
     baseCost: 280,
     costStep: 210,
     maxLevel: 3,
@@ -75,7 +76,7 @@ export const SHOP_ITEMS = [
     name: "Pocket Battery",
     description: "Consumable: next level starts with +10s.",
     category: "consumable",
-    shopIcon: "/assets/icons/time-boost.png",
+    shopIcon: appUrl("/assets/icons/time-boost.png"),
     cost: 260,
   },
 ];

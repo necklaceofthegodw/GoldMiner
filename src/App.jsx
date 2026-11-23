@@ -22,6 +22,7 @@ import {
   startDecisionSession,
 } from "./game/decisionLogClient";
 import { GAME_ICON_SOURCES } from "./game/iconSources";
+import { appUrl } from "./game/basePath.js";
 import { loadGameSave, saveGameSave } from "./game/storage";
 import { createMinerNick } from "./game/minerIdentity.js";
 import { getSlotStatus, readExperimentSlot, slotAllowsPlay } from "./game/experimentSlot.js";
@@ -398,14 +399,14 @@ function App() {
           aria-labelledby="start-title"
         >
           <img
-            src="/assets/start/lantern.svg"
+            src={appUrl("/assets/start/lantern.svg")}
             alt=""
             className="start-decor start-decor--lantern"
             loading="lazy"
             aria-hidden="true"
           />
           <img
-            src="/assets/start/rock-chunk.svg"
+            src={appUrl("/assets/start/rock-chunk.svg")}
             alt=""
             className="start-decor start-decor--rock"
             loading="lazy"
@@ -454,7 +455,7 @@ function App() {
             <article className="start-rule-card">
               <div className="start-rule-card__head">
                 <img
-                  src="/assets/icons/claw-machine.png"
+                  src={appUrl("/assets/icons/claw-machine.png")}
                   alt=""
                   className="start-rule-icon"
                   loading="lazy"
@@ -467,7 +468,7 @@ function App() {
             <article className="start-rule-card">
               <div className="start-rule-card__head">
                 <img
-                  src="/assets/start/pickaxe-badge.svg"
+                  src={appUrl("/assets/start/pickaxe-badge.svg")}
                   alt=""
                   className="start-rule-icon"
                   loading="lazy"

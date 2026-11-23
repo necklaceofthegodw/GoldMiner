@@ -1,14 +1,15 @@
 import { readPortalLaunch } from "./portalLaunch.js";
+import { BASE_URL } from "./basePath.js";
 
 function isHeaderValue(value) {
   return typeof value === "string" && /^[\x20-\x7e]+$/.test(value);
 }
 
-export function isChoiceHttpConfigured(config) {
+export function isChoiceHttpConfigured(config, base = BASE_URL) {
   let serverKey = false;
   try {
     const url = new URL(config.endpoint);
-    serverKey = url.origin === globalThis.location?.origin && url.pathname === "/api/arm" &&
+    serverKey = url.origin === globalThis.location?.origin && url.pathname === `${base}api/arm` &&
       Boolean(url.searchParams.get("armEndpoint"));
   } catch { /* Invalid endpoint remains unconfigured. */ }
   return Boolean(config?.endpoint) &&
@@ -21,10 +22,11 @@ export function readChoiceHttpConfig({
   location = globalThis.location,
   launch = readPortalLaunch(),
   runtime = globalThis.GOLDMINER_CHOICE_CONFIG ?? {},
+  base = BASE_URL,
 } = {}) {
   if (launch) {
     return {
-      endpoint: launch.invalid ? "" : `${location.origin}/api/arm?armEndpoint=${encodeURIComponent(launch.armEndpoint)}`,
+      endpoint: launch.invalid ? "" : `${location.origin}${base}api/arm?armEndpoint=${encodeURIComponent(launch.armEndpoint)}`,
       gameId: "goldminer", playerId: launch.invalid ? "" : launch.playerId, apiKey: "",
     };
   }

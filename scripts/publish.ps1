@@ -143,5 +143,7 @@ try {
 $SizeMb = [math]::Round(((Get-ChildItem $Publish -Recurse -File -Force | Measure-Object Length -Sum).Sum / 1MB), 1)
 Write-Host ""
 Write-Host "Done: $PublishFull ($SizeMb MB, Node.js $NodeVersion)" -ForegroundColor Green
+$BasePath = (Get-Content (Join-Path $Publish "dist\.base-path") -Raw).Trim()
+Write-Host "Built for URL prefix (BASE_PATH): $BasePath  ->  http://localhost:4173$BasePath"
 Write-Host "Copy the whole '$OutDir' folder to the target computer and run start.bat."
 Write-Host "The .env file is not copied - if needed, create it from .env.example."

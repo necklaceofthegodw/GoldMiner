@@ -31,7 +31,8 @@ if not exist "dist\index.html" (
   )
 )
 
-echo Gold Miner: http://localhost:4173
+echo Gold Miner: http://localhost:4173/game/goldminer/ ^(prefix = BASE_PATH in .env, default /game/goldminer^)
+echo After changing BASE_PATH delete the "dist" folder - it is rebuilt on the next start.
 echo To stop the server, close this window or press Ctrl+C.
 rem To share the game on the local network, add --host at the end of the line below.
 node node_modules\vite\bin\vite.js preview --port 4173 --strictPort

@@ -1,7 +1,9 @@
+import { appUrl } from "./basePath.js";
+
 export const GAME_ICON_SOURCES = {
-  gold: "/assets/icons/gold.png",
-  rock: "/assets/icons/rock.png",
-  hook: "/assets/icons/claw-machine.png",
-  diamond: "/assets/icons/diamond.png",
-  mystery: "/assets/icons/mystery.png",
+  gold: appUrl("/assets/icons/gold.png"),
+  rock: appUrl("/assets/icons/rock.png"),
+  hook: appUrl("/assets/icons/claw-machine.png"),
+  diamond: appUrl("/assets/icons/diamond.png"),
+  mystery: appUrl("/assets/icons/mystery.png"),
 };

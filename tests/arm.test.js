@@ -90,3 +90,18 @@ test("health returns upstream status and ok; invalid targets/headers never conta
     assert.equal(res.statusCode,expected);
   }
 });
+
+test("relay endpoint and check follow the app base path", (t) => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "location");
+  const location = new URL("https://host.example/game/goldminer/");
+  Object.defineProperty(globalThis, "location", {value: location, configurable: true});
+  t.after(() => {
+    if (previous) Object.defineProperty(globalThis, "location", previous);
+    else delete globalThis.location;
+  });
+  const base = "/game/goldminer/";
+  const config = readChoiceHttpConfig({location, base, launch: {playerId:"p",armEndpoint:ARM_ENDPOINTS.alice}});
+  assert.equal(config.endpoint, `https://host.example/game/goldminer/api/arm?armEndpoint=${encodeURIComponent(ARM_ENDPOINTS.alice)}`);
+  assert.equal(isChoiceHttpConfigured(config, base), true);
+  assert.equal(isChoiceHttpConfigured(config, "/"), false);
+});

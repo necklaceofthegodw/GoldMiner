@@ -5,10 +5,18 @@ import react from "@vitejs/plugin-react";
 import { createMinerNickHandler } from "./api/miner-nick.js";
 import { createArmHandler } from "./api/arm.js";
 import launchHandler from "./api/launch.js";
+import {
+  createPrefixRestoreMiddleware,
+  createRootRedirectMiddleware,
+  isTruthyFlag,
+  normalizeBasePath,
+} from "./api/_basePath.js";
 
 const CSV_LOG_DIRECTORY = "logs";
 const DECISION_CSV_LOG_FILENAME = "decisions.csv";
 const RUN_SUMMARY_CSV_LOG_FILENAME = "run-summaries.csv";
+// Written into the build output so "vite preview" can detect a build made for another BASE_PATH.
+const BASE_MARKER_FILENAME = ".base-path";
 const DECISION_CSV_HEADER = "czas_zdarzenia_s,decyzja\n";
 const RUN_SUMMARY_CSV_HEADER =
   "nick,session_id,started_at,finished_at,result,last_level,completed_levels,total_decisions,ones,zeros,total_earned,bank\n";
@@ -148,28 +156,62 @@ function createDecisionLogCsvReadMiddleware(rootPath) {
   };
 }
 
+function mountServerRoutes(server, { token, armHandler, stripped }) {
+  const base = server.config.base;
+  if (base !== "/") {
+    // Must run before Vite's own middlewares, so they are registered directly in the hook.
+    // Stripping proxy: "/x" -> "<prefix>/x" first, so "/" is the game root and is not redirected.
+    if (stripped) server.middlewares.use(createPrefixRestoreMiddleware(base));
+    server.middlewares.use(createRootRedirectMiddleware(base));
+  }
+  const api = `${base}api`;
+  server.middlewares.use(`${api}/launch`, launchHandler);
+  server.middlewares.use(`${api}/arm`, armHandler);
+  server.middlewares.use(`${api}/miner-nick`, createMinerNickHandler(token));
+  server.middlewares.use(`${api}/decision-log`, createDecisionLogMiddleware(server.config.root));
+  server.middlewares.use(`${api}/decision-log-csv`, createDecisionLogCsvReadMiddleware(server.config.root));
+  server.config.logger.info(`  Gold Miner base: ${base} (proxy strips prefix: ${stripped ? "yes" : "no"})`);
+}
+
 function decisionCsvPlugin(token, env) {
   const armHandler = createArmHandler(globalThis.fetch, env);
+  const stripped = isTruthyFlag(env.BASE_PATH_STRIPPED);
+  let resolvedConfig;
+  const outDir = () => path.resolve(resolvedConfig.root, resolvedConfig.build.outDir);
   return {
     name: "decision-csv-plugin",
-    configureServer(server) {
-      server.middlewares.use("/api/launch", launchHandler);
-      server.middlewares.use("/api/arm", armHandler);
-      server.middlewares.use("/api/miner-nick", createMinerNickHandler(token));
-      server.middlewares.use("/api/decision-log", createDecisionLogMiddleware(server.config.root));
-      server.middlewares.use("/api/decision-log-csv", createDecisionLogCsvReadMiddleware(server.config.root));
+    configResolved(config) {
+      resolvedConfig = config;
     },
-    configurePreviewServer(server) {
-      server.middlewares.use("/api/launch", launchHandler);
-      server.middlewares.use("/api/arm", armHandler);
-      server.middlewares.use("/api/miner-nick", createMinerNickHandler(token));
-      server.middlewares.use("/api/decision-log", createDecisionLogMiddleware(server.config.root));
-      server.middlewares.use("/api/decision-log-csv", createDecisionLogCsvReadMiddleware(server.config.root));
+    async closeBundle() {
+      if (resolvedConfig.command !== "build") return;
+      await fs.writeFile(path.join(outDir(), BASE_MARKER_FILENAME), resolvedConfig.base, "utf8");
+    },
+    configureServer(server) {
+      mountServerRoutes(server, { token, armHandler, stripped });
+    },
+    async configurePreviewServer(server) {
+      let builtBase = null;
+      try {
+        builtBase = (await fs.readFile(path.join(outDir(), BASE_MARKER_FILENAME), "utf8")).trim();
+      } catch { /* Build made before the marker existed. */ }
+      if (builtBase !== server.config.base) {
+        throw new Error(
+          `The build in "${resolvedConfig.build.outDir}" was made for base path "${builtBase ?? "unknown"}", ` +
+          `but BASE_PATH is now "${server.config.base}". Delete the "${resolvedConfig.build.outDir}" folder ` +
+          "(start.bat rebuilds it) or run the build again.",
+        );
+      }
+      mountServerRoutes(server, { token, armHandler, stripped });
     },
   };
 }
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), "");
-  return { plugins: [react(), decisionCsvPlugin(process.env.BLOB_READ_WRITE_TOKEN || env.BLOB_READ_WRITE_TOKEN, { ...env, ...process.env })] };
+  const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
+  return {
+    // Public URL prefix (reverse proxy), e.g. /game/goldminer/. "/" serves the game at the root.
+    base: normalizeBasePath(env.BASE_PATH),
+    plugins: [react(), decisionCsvPlugin(env.BLOB_READ_WRITE_TOKEN, env)],
+  };
 });

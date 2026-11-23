@@ -26,7 +26,8 @@ export default async function launchHandler(req, res) {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.statusCode = 200;
     // Browser navigation by POST: save the five fields in this tab, then load the SPA.
-    res.end(`<!doctype html><html><meta charset="utf-8"><title>Gold Miner</title><body><p id="status">Opening game…</p><script>try{sessionStorage.setItem(${JSON.stringify(PORTAL_LAUNCH_KEY)},${json});location.replace('/');}catch{document.getElementById('status').textContent='Please enable browser storage and open the game from the portal again.'}</script></body></html>`);
+    // "../" is relative to <prefix>/api/launch, so it opens <prefix>/ whatever the prefix or proxy mode.
+    res.end(`<!doctype html><html><meta charset="utf-8"><title>Gold Miner</title><body><p id="status">Opening game…</p><script>try{sessionStorage.setItem(${JSON.stringify(PORTAL_LAUNCH_KEY)},${json});location.replace('../');}catch{document.getElementById('status').textContent='Please enable browser storage and open the game from the portal again.'}</script></body></html>`);
   } catch {
     res.statusCode = 400; res.end("Invalid portal launch: playerId, armEndpoint, returnEndpoint, startAt and endAt are required; slot must exceed 10 seconds.");
   }

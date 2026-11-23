@@ -1,13 +1,18 @@
-const CACHE_NAME = "binary-miner-v2";
+const CACHE_NAME = "binary-miner-v3";
+// All paths are relative to the registration scope (the app's BASE_PATH, e.g. /game/goldminer/).
+const scoped = (path) => new URL(path, self.registration.scope).href;
+const INDEX_URL = scoped("index.html");
+const OFFLINE_URL = scoped("offline.html");
+const API_PATH = new URL("api/", self.registration.scope).pathname;
 const APP_SHELL = [
-  "/",
-  "/index.html",
-  "/offline.html",
-  "/manifest.webmanifest",
-  "/icon-192.svg",
-  "/icon-512.svg",
-  "/favicon.svg",
-];
+  "",
+  "index.html",
+  "offline.html",
+  "manifest.webmanifest",
+  "icon-192.svg",
+  "icon-512.svg",
+  "favicon.svg",
+].map(scoped);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -30,20 +35,20 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith("/api/")) return;
+  if (url.pathname.startsWith(API_PATH)) return;
 
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
         .then((response) => {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", clone));
+          caches.open(CACHE_NAME).then((cache) => cache.put(INDEX_URL, clone));
           return response;
         })
         .catch(async () => {
           const cachedPage = await caches.match(request);
           if (cachedPage) return cachedPage;
-          return caches.match("/offline.html");
+          return caches.match(OFFLINE_URL);
         })
     );
     return;

@@ -13,7 +13,7 @@ test("POST launch accepts exactly the five portal fields as JSON or a navigation
     await launchHandler({method:"POST",headers:{"content-type":form?"application/x-www-form-urlencoded":"application/json"},body:form?new URLSearchParams(launch).toString():launch},res);
     assert.equal(res.statusCode,200);
     assert.ok(res.body.includes("sessionStorage.setItem"));
-    assert.ok(res.body.includes("location.replace('/')"));
+    assert.ok(res.body.includes("location.replace('../')"));
   }
 });
 
