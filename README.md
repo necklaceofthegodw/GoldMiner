@@ -54,25 +54,26 @@ localStorage outbox and are retried.
 
 ### 1. Prepare (on a machine with internet)
 
-- Install **Node.js 26 LTS** (minimum supported: 20.19+ or 22.12+, required by Vite 8).
-  Download the Windows `.msi` installer from https://nodejs.org so it can also be
-  installed on the offline laptops.
-- In the project folder, install dependencies and build:
-
-  ```bash
-  npm ci
-  npm run build
-  ```
-
-- Copy the **whole project folder, including `node_modules` and `dist`**, to each laptop.
-  Without `node_modules`, `npx` would try to download packages and fail offline.
+- Install Node.js (20.19+ or 22.12+, required by Vite 8) on the preparing machine.
+- Double-click **`publish.bat`** (or run `scripts\publish.ps1`). It:
+  - builds the app (`npm run build`),
+  - downloads the portable Node.js 26 zip (`win-x64`) from nodejs.org, verifies its
+    SHA256 and caches it in `.cache/node/`,
+  - creates `publish/` with `dist/`, the API files needed by `vite preview`,
+    `start.bat`, `portal_launch_test.html`, `.env.example`, the portable Node.js in
+    `publish/node/` and all modules installed by `npm ci` with that Node.js.
+  Existing `publish/logs/` are kept. Options: `-NodeMajor 26 -Arch win-x64 -OutDir publish`.
+- `.env` is **not** copied. Without it the default arm URLs are used without API keys;
+  create `publish/.env` from `.env.example` on the target if keys are needed.
+- Copy the **whole `publish` folder** to each laptop. Nothing has to be installed there.
 
 ### 2. Run (on the offline laptop)
 
-Double-click **`start.bat`**. It checks that Node.js and `node_modules` are present,
+Double-click **`start.bat`** in the copied folder. It uses the bundled `node\node.exe`
+(falling back to a system Node.js), checks that `node_modules` is present,
 builds `dist` if missing, and starts the server at `http://localhost:4173`
 (it does not open a browser). Close the window or press Ctrl+C to stop it.
-Decision CSV logs are written to the `logs/` folder of the project.
+Decision CSV logs are written to the `logs/` folder next to `start.bat`.
 
 To let another computer in the local network connect, add `--host` at the end of the
 `vite preview` line in `start.bat`, open `http://<server-IP>:4173` on the other
